@@ -1,0 +1,262 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  body {
+    font-family: 'Outfit', 'Inter', sans-serif;
+    background-color: #f8fafc;
+    color: #0f172a;
+    background-image:
+      radial-gradient(circle at top left, rgba(99, 102, 241, 0.16), transparent 24%),
+      radial-gradient(circle at top right, rgba(6, 182, 212, 0.14), transparent 20%),
+      linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+  }
+
+  .dark body {
+    background-color: #020617;
+    color: #f8fafc;
+    background-image:
+      radial-gradient(circle at top left, rgba(129, 140, 248, 0.2), transparent 24%),
+      radial-gradient(circle at top right, rgba(34, 211, 238, 0.16), transparent 20%),
+      linear-gradient(135deg, #020617 0%, #111827 100%);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  input, select, textarea {
+    color: #0f172a !important;
+    background-color: rgba(255, 255, 255, 0.9);
+  }
+
+  .dark input, .dark select, .dark textarea {
+    color: #f8fafc !important;
+    background-color: rgba(15, 23, 42, 0.8);
+  }
+
+  input::placeholder, textarea::placeholder {
+    color: #94a3b8 !important;
+  }
+
+  option {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  .dark option {
+    background-color: #0f172a !important;
+    color: #f8fafc !important;
+  }
+
+  ::selection {
+    background: rgba(99, 102, 241, 0.24);
+    color: #312e81;
+  }
+}
+
+/* Glassmorphism Styles */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 10px 35px rgba(15, 23, 42, 0.06);
+}
+
+.dark .glass-panel {
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 10px 35px rgba(2, 6, 23, 0.28);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+}
+
+.dark .glass-card {
+  background: rgba(30, 41, 59, 0.45);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 12px 30px rgba(2, 6, 23, 0.22);
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.5);
+}
+
+/* Vibrant 3D Cyber Card Effects */
+.cyber-card {
+  --card-rotate-x: 0deg;
+  --card-rotate-y: 0deg;
+  position: relative;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  border-radius: 1.5rem;
+  box-shadow: 0 10px 30px -10px rgba(99, 102, 241, 0.15), 0 0 20px -5px rgba(168, 85, 247, 0.1);
+  transform: perspective(1000px) rotateX(var(--card-rotate-x)) rotateY(var(--card-rotate-y)) translateZ(0);
+  transform-style: preserve-3d;
+  will-change: transform;
+  transition: transform 160ms ease-out, box-shadow 220ms ease-out, border-color 220ms ease-out;
+  overflow: hidden;
+}
+
+.dark .cyber-card {
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(129, 140, 248, 0.2);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5), 0 0 25px -5px rgba(99, 102, 241, 0.25);
+}
+
+.cyber-card:hover {
+  transform: perspective(1000px) rotateX(var(--card-rotate-x)) rotateY(var(--card-rotate-y)) translateZ(4px) translateY(-3px);
+  border-color: rgba(168, 85, 247, 0.6);
+  box-shadow: 0 20px 40px -15px rgba(99, 102, 241, 0.3), 0 0 30px 2px rgba(236, 72, 153, 0.25);
+}
+
+/* Shared tactile treatment for action controls. */
+button {
+  transform-style: preserve-3d;
+  transition: transform 140ms ease, box-shadow 180ms ease, filter 180ms ease;
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-2px) translateZ(2px);
+  filter: brightness(1.035);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px) scale(0.98);
+  filter: brightness(0.98);
+}
+
+button:focus-visible {
+  outline: 2px solid #06b6d4;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cyber-card,
+  button {
+    transition: none;
+  }
+
+  .cyber-card:hover,
+  button:hover:not(:disabled),
+  button:active:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* Neon Gradient Borders */
+.neon-border-indigo {
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.4), inset 0 0 10px rgba(99, 102, 241, 0.2);
+  border: 1px solid rgba(129, 140, 248, 0.5);
+}
+
+.neon-border-purple {
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.4), inset 0 0 10px rgba(168, 85, 247, 0.2);
+  border: 1px solid rgba(192, 132, 252, 0.5);
+}
+
+.neon-border-pink {
+  box-shadow: 0 0 15px rgba(236, 72, 153, 0.4), inset 0 0 10px rgba(236, 72, 153, 0.2);
+  border: 1px solid rgba(244, 114, 182, 0.5);
+}
+
+.neon-border-emerald {
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.4), inset 0 0 10px rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(52, 211, 153, 0.5);
+}
+
+.neon-border-amber {
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.4), inset 0 0 10px rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(251, 191, 36, 0.5);
+}
+
+/* Gradient Text Shimmer */
+.text-gradient-primary {
+  background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-cyan {
+  background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 50%, #6366f1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-gold {
+  background: linear-gradient(135deg, #f59e0b 0%, #ef4444 50%, #ec4899 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* 3D Floating Animations */
+@keyframes float3D {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(1deg);
+  }
+}
+
+.animate-float-3d {
+  animation: float3D 6s ease-in-out infinite;
+}
+
+/* Glowing Pulse */
+@keyframes neonGlow {
+  0%, 100% {
+    opacity: 0.6;
+    filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.8));
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 18px rgba(236, 72, 153, 0.9));
+  }
+}
+
+.animate-neon-glow {
+  animation: neonGlow 3s ease-in-out infinite;
+}
+
+/* Leaflet Map Size override */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  border-radius: 0.75rem;
+  z-index: 10;
+}

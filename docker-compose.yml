@@ -1,0 +1,21 @@
+services:
+  backend:
+    build: ./backend
+    container_name: zinterns-backend
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./backend/.env
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:5000/api
+    container_name: zinterns-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: always
