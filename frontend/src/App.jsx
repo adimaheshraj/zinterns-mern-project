@@ -781,7 +781,7 @@ function LoginPage() {
     };
 
     loadTelemetry();
-    socket = io(API_URL.replace(/\/api\/?$/, ''), { timeout: 3000, reconnection: false });
+    socket = io(window.location.origin, { timeout: 3000, reconnection: false });
     socket.on('connect', () => setTelemetry(current => ({ ...current, socketStatus: 'Active' })));
     socket.on('connect_error', () => setTelemetry(current => ({ ...current, socketStatus: 'Offline' })));
 
