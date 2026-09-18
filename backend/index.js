@@ -81,7 +81,7 @@ const PORT = process.env.PORT || 5000;
 async function startServer() {
   await connectDB();
   await ensureDefaultUsers();
-  server.listen(PORT, () => {
+  server.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 ZInterns Server is running on port ${PORT}`);
     console.log(`👉 API Endpoint: http://localhost:${PORT}/api`);
   });
