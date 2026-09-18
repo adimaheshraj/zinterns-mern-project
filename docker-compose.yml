@@ -12,7 +12,7 @@ services:
     build:
       context: ./frontend
       args:
-        VITE_API_URL: /api
+        VITE_API_URL: http://40.192.120.59/api
     container_name: zinterns-frontend
     ports:
       - "3000:80"

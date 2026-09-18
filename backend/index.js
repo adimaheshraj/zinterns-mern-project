@@ -14,15 +14,20 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: '*', // Allow all origins for local testing
-    methods: ['GET', 'POST', 'PUT', 'DELETE']
+    origin: 'http://40.192.120.59',
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true
   }
 });
 app.set('io', io);
 
 // Configure Middlewares
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: 'http://40.192.120.59',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true
+}));
 app.use(express.json());
 
 // Rate Limiting
