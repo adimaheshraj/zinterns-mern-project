@@ -6,6 +6,8 @@ services:
       - "5000:5000"
     env_file:
       - ./backend/.env
+    environment:
+      PUBLIC_APP_URL: http://40.192.120.59:3000
     restart: always
 
   frontend:

@@ -41,6 +41,7 @@ async function getTransporter() {
 async function sendWelcomeEmail({ email, name, employeeId, username, tempPassword, role, department, appUrl }) {
   try {
     const transporter = await getTransporter();
+    const portalUrl = appUrl || process.env.PUBLIC_APP_URL || 'http://40.192.120.59:3000';
 
     const htmlContent = `
       <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background-color: #f8fafc; border-radius: 16px; border: 1px solid #e2e8f0;">
@@ -66,8 +67,8 @@ async function sendWelcomeEmail({ email, name, employeeId, username, tempPasswor
           </div>
 
           <div style="text-align: center; margin: 24px 0;">
-            <a href="${appUrl}" style="display: inline-block; background-color: #4f46e5; color: white; padding: 12px 22px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 700;">Open ZInterns Portal</a>
-            <p style="color: #64748b; font-size: 12px; margin: 10px 0 0; word-break: break-all;">${appUrl}</p>
+            <a href="${portalUrl}" style="display: inline-block; background-color: #4f46e5; color: white; padding: 12px 22px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 700;">Open ZInterns Portal</a>
+            <p style="color: #64748b; font-size: 12px; margin: 10px 0 0; word-break: break-all;">${portalUrl}</p>
           </div>
 
           <div style="background-color: #fff7ed; padding: 16px; border-radius: 12px; border: 1px solid #ffedd5; color: #c2410c; font-size: 13px; margin-bottom: 20px; line-height: 1.5;">
@@ -91,7 +92,22 @@ async function sendWelcomeEmail({ email, name, employeeId, username, tempPasswor
       from: process.env.SMTP_FROM || `"ZInterns HR Team" <${senderEmail}>`,
       to: email,
       subject: `Welcome to ZInterns - Your Account Credentials (${employeeId})`,
-      html: htmlContent
+      html: htmlContent,
+      text: [
+        `Welcome to ZInterns, ${name}!`,
+        '',
+        'Your account has been created successfully.',
+        `Employee ID: ${employeeId}`,
+        `Registered Email: ${email}`,
+        `Username: ${username}`,
+        `Temporary Password: ${tempPassword}`,
+        `Assigned Role: ${role}`,
+        `Department: ${department || 'General'}`,
+        '',
+        `Open the ZInterns Portal: ${portalUrl}`,
+        '',
+        'You must change your temporary password after your first login.'
+      ].join('\n')
     };
 
     const info = await transporter.sendMail(mailOptions);
