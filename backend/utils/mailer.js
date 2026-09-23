@@ -58,6 +58,7 @@ async function sendWelcomeEmail({ email, name, employeeId, username, tempPasswor
           </p>
 
           <div style="background-color: #f1f5f9; padding: 18px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #6366f1;">
+            <p style="margin: 6px 0; font-size: 14px; color: #334155;"><strong>Website Link:</strong> <a href="${portalUrl}" style="color: #4f46e5; font-weight: bold; word-break: break-all;">${portalUrl}</a></p>
             <p style="margin: 6px 0; font-size: 14px; color: #334155;"><strong>Employee ID:</strong> <span style="font-family: monospace; color: #4f46e5; font-weight: bold;">${employeeId}</span></p>
             <p style="margin: 6px 0; font-size: 14px; color: #334155;"><strong>Registered Email:</strong> ${email}</p>
             <p style="margin: 6px 0; font-size: 14px; color: #334155;"><strong>Username:</strong> <span style="font-family: monospace; font-weight: bold;">${username}</span></p>
@@ -68,7 +69,7 @@ async function sendWelcomeEmail({ email, name, employeeId, username, tempPasswor
 
           <div style="text-align: center; margin: 24px 0;">
             <a href="${portalUrl}" style="display: inline-block; background-color: #4f46e5; color: white; padding: 12px 22px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 700;">Open ZInterns Portal</a>
-            <p style="color: #64748b; font-size: 12px; margin: 10px 0 0; word-break: break-all;">${portalUrl}</p>
+            <p style="color: #64748b; font-size: 12px; margin: 10px 0 0; word-break: break-all;"><a href="${portalUrl}" style="color: #4f46e5; text-decoration: underline;">${portalUrl}</a></p>
           </div>
 
           <div style="background-color: #fff7ed; padding: 16px; border-radius: 12px; border: 1px solid #ffedd5; color: #c2410c; font-size: 13px; margin-bottom: 20px; line-height: 1.5;">
@@ -96,7 +97,8 @@ async function sendWelcomeEmail({ email, name, employeeId, username, tempPasswor
       text: [
         `Welcome to ZInterns, ${name}!`,
         '',
-        'Your account has been created successfully.',
+        'Your account has been created successfully. Below are your account login credentials and portal details:',
+        `Website Link: ${portalUrl}`,
         `Employee ID: ${employeeId}`,
         `Registered Email: ${email}`,
         `Username: ${username}`,

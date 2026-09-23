@@ -111,7 +111,8 @@ export default function AddEmployeeModal({ isOpen, onClose, onUserCreated }) {
 
   const handleCopyCredentials = () => {
     if (!createdData?.temporaryCredentials) return;
-    const text = `ZInterns Credentials:\nUsername: ${createdData.temporaryCredentials.username}\nTemp Password: ${createdData.temporaryCredentials.password}\nEmployee ID: ${createdData.user.employeeId}`;
+    const portalUrl = window.location.origin;
+    const text = `ZInterns Credentials:\nWebsite Link: ${portalUrl}\nUsername: ${createdData.temporaryCredentials.username}\nTemp Password: ${createdData.temporaryCredentials.password}\nEmployee ID: ${createdData.user.employeeId}`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -176,6 +177,7 @@ export default function AddEmployeeModal({ isOpen, onClose, onUserCreated }) {
                   {copied ? 'Copied!' : 'Copy Credentials'}
                 </button>
               </div>
+              <div>Website Link: <a href={window.location.origin} target="_blank" rel="noreferrer" className="font-bold text-indigo-600 dark:text-indigo-400 underline">{window.location.origin}</a></div>
               <div>Registered Email: <span className="font-bold text-slate-800 dark:text-slate-200">{createdData.user.email}</span></div>
               <div>Username: <span className="font-bold text-slate-800 dark:text-slate-200">{createdData.temporaryCredentials.username}</span></div>
               <div>Temp Password: <span className="font-bold text-indigo-600 dark:text-indigo-400">{createdData.temporaryCredentials.password}</span></div>

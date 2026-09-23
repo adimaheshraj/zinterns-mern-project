@@ -117,6 +117,9 @@ async function registerUser(req, res) {
 
     console.log(`✉️ Sending Welcome Email to ${email} (Employee ID: ${employeeId})`);
 
+    const requestOrigin = req.headers.origin || (req.protocol && req.get ? `${req.protocol}://${req.get('host')}` : '');
+    const appUrl = process.env.PUBLIC_APP_URL || (requestOrigin && !requestOrigin.includes('localhost:5000') ? requestOrigin : 'http://40.192.120.59:3000');
+
     // Send credentials directly to employee's email address
     const emailResult = await sendWelcomeEmail({
       email: newUser.email,
@@ -126,7 +129,7 @@ async function registerUser(req, res) {
       tempPassword,
       role: newUser.role,
       department: newUser.department,
-      appUrl: process.env.PUBLIC_APP_URL || 'http://40.192.120.59:3000'
+      appUrl
     });
 
     res.status(201).json({
