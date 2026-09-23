@@ -38,7 +38,7 @@ async function getTransporter() {
 /**
  * Send Welcome & Account Credentials Email
  */
-async function sendWelcomeEmail({ email, name, employeeId, username, tempPassword, role, department }) {
+async function sendWelcomeEmail({ email, name, employeeId, username, tempPassword, role, department, appUrl }) {
   try {
     const transporter = await getTransporter();
 
@@ -63,6 +63,11 @@ async function sendWelcomeEmail({ email, name, employeeId, username, tempPasswor
             <p style="margin: 6px 0; font-size: 14px; color: #334155;"><strong>Temporary Password:</strong> <span style="font-family: monospace; background: #e0e7ff; padding: 2px 8px; border-radius: 4px; color: #3730a3; font-weight: bold;">${tempPassword}</span></p>
             <p style="margin: 6px 0; font-size: 14px; color: #334155;"><strong>Assigned Role:</strong> ${role}</p>
             <p style="margin: 6px 0; font-size: 14px; color: #334155;"><strong>Department:</strong> ${department || 'General'}</p>
+          </div>
+
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="${appUrl}" style="display: inline-block; background-color: #4f46e5; color: white; padding: 12px 22px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 700;">Open ZInterns Portal</a>
+            <p style="color: #64748b; font-size: 12px; margin: 10px 0 0; word-break: break-all;">${appUrl}</p>
           </div>
 
           <div style="background-color: #fff7ed; padding: 16px; border-radius: 12px; border: 1px solid #ffedd5; color: #c2410c; font-size: 13px; margin-bottom: 20px; line-height: 1.5;">

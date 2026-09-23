@@ -125,7 +125,8 @@ async function registerUser(req, res) {
       username: newUser.username,
       tempPassword,
       role: newUser.role,
-      department: newUser.department
+      department: newUser.department,
+      appUrl: process.env.PUBLIC_APP_URL || `${req.protocol}://${req.get('host')}`
     });
 
     res.status(201).json({
