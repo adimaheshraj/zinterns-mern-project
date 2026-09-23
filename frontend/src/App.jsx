@@ -857,7 +857,7 @@ function LoginPage() {
         <div className="lg:col-span-5 p-8 sm:p-10 flex flex-col justify-between space-y-6 bg-slate-900/60">
           <div className="space-y-6">
             <div className="text-center sm:text-left space-y-1">
-              <h2 className="text-2xl font-black text-white tracking-tight">Portal Sign In</h2>
+              <h2 className="text-2xl font-black text-white tracking-tight">Portal Mahesh Raj Sign In</h2>
               <p className="text-xs text-slate-400 font-medium">Enter your credentials to access your dashboard desk.</p>
             </div>
 
