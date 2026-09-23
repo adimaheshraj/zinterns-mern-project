@@ -31,12 +31,12 @@
   }
 
   input, select, textarea {
-    color: #0f172a !important;
+    color: #0f172a;
     background-color: rgba(255, 255, 255, 0.9);
   }
 
   .dark input, .dark select, .dark textarea {
-    color: #f8fafc !important;
+    color: #f8fafc;
     background-color: rgba(15, 23, 42, 0.8);
   }
 
