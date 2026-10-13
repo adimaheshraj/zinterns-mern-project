@@ -367,7 +367,7 @@ function MobileNav({ activeTab, setActiveTab }) {
 // Header Component
 // ----------------------------------------------------
 function Header({ activeSpace, setActiveSpace, onOpenWFH, onOpenAddEmployee }) {
-  const { user, token, API_URL, theme, toggleTheme, notifications, setNotifications } = useApp();
+  const { user, token, API_URL, theme, toggleTheme, logout, notifications, setNotifications } = useApp();
   const [showNotifications, setShowNotifications] = useState(false);
 
   useEffect(() => {
@@ -464,8 +464,19 @@ function Header({ activeSpace, setActiveSpace, onOpenWFH, onOpenAddEmployee }) {
         <button
           onClick={toggleTheme}
           className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+          aria-label="Toggle theme"
+          title="Toggle theme"
         >
           {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+        </button>
+
+        <button
+          onClick={logout}
+          className="md:hidden p-2 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-slate-400 hover:text-rose-500 rounded-xl transition-colors"
+          aria-label="Sign out"
+          title="Sign out"
+        >
+          <LogOut className="w-5 h-5" />
         </button>
 
         {/* Notifications Panel */}
