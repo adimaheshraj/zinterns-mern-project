@@ -50,6 +50,19 @@ import EmployeeProfileDrawer from './components/org/EmployeeProfileDrawer';
 import TeamDashboardModal from './components/org/TeamDashboardModal';
 import WFHRequestModal from './components/org/WFHRequestModal';
 
+const navigationItems = [
+  { id: 'home', label: 'Dashboard', mobileLabel: 'Home', icon: Home },
+  { id: 'timetracker', label: 'Time Tracker', mobileLabel: 'Time', icon: Clock },
+  { id: 'tasks', label: 'Tasks Board', mobileLabel: 'Tasks', icon: ListTodo },
+  { id: 'leaves', label: 'Leave Tracker', mobileLabel: 'Leave', icon: Calendar },
+  { id: 'reports', label: 'Daily Reports', mobileLabel: 'Reports', icon: FileSpreadsheet },
+  { id: 'teamspace', label: 'Team Space', mobileLabel: 'Team', icon: MessageSquare },
+  { id: 'directory', label: 'Directory', mobileLabel: 'Directory', icon: Users },
+  { id: 'calendar', label: 'Calendar Grid', mobileLabel: 'Calendar', icon: Calendar },
+  { id: 'files', label: 'File Cabinet', mobileLabel: 'Files', icon: Folder },
+  { id: 'settings', label: 'Settings', mobileLabel: 'Settings', icon: Settings }
+];
+
 export default function App() {
   const { user, loading, theme, toggleTheme, logout, activeTab, setActiveTab } = useApp();
 
@@ -80,25 +93,23 @@ export default function App() {
   }
 
   const isHR = ['Super Admin', 'HR'].includes(user.role);
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    if (tab === 'directory') setActiveSpace('organization');
+    else if (tab === 'teamspace') setActiveSpace('team_space');
+    else setActiveSpace('my_space');
+  };
 
   return (
-    <div className="h-full flex bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 overflow-hidden font-sans relative">
+    <div className="h-dvh min-h-0 flex flex-col md:flex-row bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 overflow-hidden font-sans relative">
       {/* Three.js Dynamic 3D Canvas Background */}
       <Background3D />
 
       {/* Sidebar Navigation */}
-      <Sidebar
-        activeTab={activeTab}
-        setActiveTab={(tab) => {
-          setActiveTab(tab);
-          if (tab === 'directory') setActiveSpace('organization');
-          else if (tab === 'teamspace') setActiveSpace('team_space');
-          else setActiveSpace('my_space');
-        }}
-      />
+      <Sidebar activeTab={activeTab} setActiveTab={handleTabChange} />
 
       {/* Main Container */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="min-w-0 min-h-0 flex-1 flex flex-col overflow-hidden">
         {/* Top Header bar */}
         <Header
           activeSpace={activeSpace}
@@ -114,9 +125,9 @@ export default function App() {
 
         {/* Organization Navigation Bar (shown when in Organization space or Directory tab) */}
         {(activeSpace === 'organization' || activeTab === 'directory') && (
-          <div className="bg-white/70 dark:bg-slate-900/70 border-b border-slate-200/60 dark:border-slate-800/40 px-6 py-2 flex items-center justify-between overflow-x-auto z-20 backdrop-blur-md">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mr-2 flex items-center gap-1">
+          <div className="bg-white/70 dark:bg-slate-900/70 border-b border-slate-200/60 dark:border-slate-800/40 px-3 sm:px-6 py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 overflow-x-auto z-20 backdrop-blur-md">
+            <div className="flex items-center gap-2 min-w-0 overflow-x-auto">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mr-2 flex items-center gap-1 whitespace-nowrap">
                 <Building className="w-3.5 h-3.5 text-indigo-500" /> Org Module:
               </span>
               <button
@@ -169,7 +180,7 @@ export default function App() {
             {isHR && (
               <button
                 onClick={() => setIsAddEmployeeOpen(true)}
-                className="px-3.5 py-1.5 bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400 rounded-xl text-xs font-extrabold hover:bg-indigo-100 transition-colors flex items-center gap-1.5"
+                className="px-3.5 py-1.5 bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400 rounded-xl text-xs font-extrabold hover:bg-indigo-100 transition-colors flex items-center gap-1.5 whitespace-nowrap self-start sm:self-auto"
               >
                 <UserPlus className="w-3.5 h-3.5" /> + Add Employee
               </button>
@@ -178,8 +189,8 @@ export default function App() {
         )}
 
         {/* Dynamic Content Wrapper */}
-        <main className="flex-1 overflow-y-auto p-6 bg-slate-50/50 dark:bg-slate-950/40">
-          <div className="max-w-6xl mx-auto h-full">
+        <main className="min-w-0 min-h-0 flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 bg-slate-50/50 dark:bg-slate-950/40">
+          <div className="max-w-6xl min-w-0 min-h-full mx-auto">
             {activeTab === 'home' && <Dashboard />}
             {activeTab === 'timetracker' && <TimeTracker />}
             {activeTab === 'tasks' && <Tasks />}
@@ -210,6 +221,8 @@ export default function App() {
           </div>
         </main>
       </div>
+
+      <MobileNav activeTab={activeTab} setActiveTab={handleTabChange} />
 
       {/* Global Modals & Drawers */}
       <AddEmployeeModal
@@ -247,21 +260,8 @@ export default function App() {
 function Sidebar({ activeTab, setActiveTab }) {
   const { user, logout } = useApp();
 
-  const menuItems = [
-    { id: 'home', label: 'Dashboard', icon: Home },
-    { id: 'timetracker', label: 'Time Tracker', icon: Clock },
-    { id: 'tasks', label: 'Tasks Board', icon: ListTodo },
-    { id: 'leaves', label: 'Leave Tracker', icon: Calendar },
-    { id: 'reports', label: 'Daily Reports', icon: FileSpreadsheet },
-    { id: 'teamspace', label: 'Team Space', icon: MessageSquare },
-    { id: 'directory', label: 'Directory', icon: Users },
-    { id: 'calendar', label: 'Calendar Grid', icon: Calendar },
-    { id: 'files', label: 'File Cabinet', icon: Folder },
-    { id: 'settings', label: 'Settings', icon: Settings }
-  ];
-
   return (
-    <aside className="hidden md:flex flex-col w-64 border-r border-slate-200/60 dark:border-slate-800/40 bg-white dark:bg-slate-900/60 backdrop-blur-md">
+    <aside className="hidden md:flex flex-col w-64 shrink-0 border-r border-slate-200/60 dark:border-slate-800/40 bg-white dark:bg-slate-900/60 backdrop-blur-md">
       {/* Logo */}
       <div className="p-6 border-b border-slate-200/60 dark:border-slate-800/40 flex items-center gap-3">
         <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-white font-black text-xl shadow-lg border border-white/20">
@@ -279,7 +279,7 @@ function Sidebar({ activeTab, setActiveTab }) {
 
       {/* Nav items */}
       <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
-        {menuItems.map((item) => {
+        {navigationItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
           return (
@@ -334,6 +334,35 @@ function Sidebar({ activeTab, setActiveTab }) {
   );
 }
 
+function MobileNav({ activeTab, setActiveTab }) {
+  return (
+    <nav
+      aria-label="Main navigation"
+      className="md:hidden shrink-0 grid grid-cols-5 gap-1 border-t border-slate-200/70 dark:border-slate-800/70 bg-white/95 dark:bg-slate-900/95 px-1.5 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] backdrop-blur-md z-30"
+    >
+      {navigationItems.map((item) => {
+        const Icon = item.icon;
+        const isActive = activeTab === item.id;
+        return (
+          <button
+            key={item.id}
+            onClick={() => setActiveTab(item.id)}
+            aria-current={isActive ? 'page' : undefined}
+            className={`min-w-0 min-h-10 flex flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 text-[9px] font-bold leading-tight ${
+              isActive
+                ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-300'
+                : 'text-slate-500 dark:text-slate-400'
+            }`}
+          >
+            <Icon className="w-4 h-4 shrink-0" />
+            <span className="w-full truncate text-center">{item.mobileLabel}</span>
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
 // ----------------------------------------------------
 // Header Component
 // ----------------------------------------------------
@@ -374,13 +403,13 @@ function Header({ activeSpace, setActiveSpace, onOpenWFH, onOpenAddEmployee }) {
   const isHR = ['Super Admin', 'HR'].includes(user.role);
 
   return (
-    <header className="h-16 border-b border-slate-200/60 dark:border-slate-800/40 bg-white/50 dark:bg-slate-900/30 backdrop-blur-md px-6 flex items-center justify-between flex-shrink-0 relative z-30">
+    <header className="min-h-16 h-auto border-b border-slate-200/60 dark:border-slate-800/40 bg-white/50 dark:bg-slate-900/30 backdrop-blur-md px-3 py-2 flex flex-col gap-2 flex-shrink-0 relative z-30 md:h-16 md:px-6 md:py-0 md:flex-row md:items-center md:justify-between">
       {/* Top Space Switcher Tabs */}
-      <div className="flex items-center gap-3">
-        <div className="flex gap-1 bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl border border-slate-200/60 dark:border-slate-800/60">
+      <div className="min-w-0 flex items-center justify-center gap-3">
+        <div className="max-w-full flex gap-1 bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl border border-slate-200/60 dark:border-slate-800/60">
           <button
             onClick={() => setActiveSpace('my_space')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+            className={`px-2.5 sm:px-3.5 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap ${
               activeSpace === 'my_space'
                 ? 'bg-indigo-600 text-white shadow-sm'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-800'
@@ -390,7 +419,7 @@ function Header({ activeSpace, setActiveSpace, onOpenWFH, onOpenAddEmployee }) {
           </button>
           <button
             onClick={() => setActiveSpace('team_space')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+            className={`px-2.5 sm:px-3.5 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap ${
               activeSpace === 'team_space'
                 ? 'bg-indigo-600 text-white shadow-sm'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-800'
@@ -400,7 +429,7 @@ function Header({ activeSpace, setActiveSpace, onOpenWFH, onOpenAddEmployee }) {
           </button>
           <button
             onClick={() => setActiveSpace('organization')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+            className={`px-2.5 sm:px-3.5 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap ${
               activeSpace === 'organization'
                 ? 'bg-indigo-600 text-white shadow-sm'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-800'
@@ -413,13 +442,13 @@ function Header({ activeSpace, setActiveSpace, onOpenWFH, onOpenAddEmployee }) {
         <span className="text-xs text-slate-400 font-bold hidden lg:inline">ID: {user.employeeId}</span>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center justify-end gap-1.5 sm:gap-3">
         {/* WFH Pass Action Button */}
         <button
           onClick={onOpenWFH}
           className="px-3 py-1.5 bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/40 rounded-xl font-bold text-xs hover:bg-indigo-100 transition-colors flex items-center gap-1.5"
         >
-          <Home className="w-3.5 h-3.5" /> WFH Pass
+          <Home className="w-3.5 h-3.5" /> <span className="hidden sm:inline">WFH Pass</span>
         </button>
 
         {isHR && (
@@ -427,7 +456,7 @@ function Header({ activeSpace, setActiveSpace, onOpenWFH, onOpenAddEmployee }) {
             onClick={onOpenAddEmployee}
             className="px-3.5 py-1.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-extrabold text-xs shadow hover:opacity-90 transition-opacity flex items-center gap-1"
           >
-            <UserPlus className="w-3.5 h-3.5" /> Add Employee
+            <UserPlus className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Add Employee</span>
           </button>
         )}
 
@@ -453,7 +482,7 @@ function Header({ activeSpace, setActiveSpace, onOpenWFH, onOpenAddEmployee }) {
 
           <AnimatePresence>
             {showNotifications && (
-              <div className="absolute right-0 mt-3 w-80 bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-4 space-y-3 max-h-96 overflow-y-auto">
+              <div className="absolute right-0 mt-3 w-[calc(100vw-1.5rem)] max-w-80 sm:w-80 bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-4 space-y-3 max-h-96 overflow-y-auto">
                 <div className="flex items-center justify-between border-b dark:border-slate-800 pb-2">
                   <span className="font-extrabold text-xs text-slate-700 dark:text-slate-300 uppercase tracking-wider">Latest Alerts</span>
                   {notifications.length > 0 && (
@@ -533,7 +562,7 @@ function AIChatBot() {
       {/* Floating button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 z-40 p-4 rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-xl hover:opacity-90 active:scale-95 transition-transform"
+        className="fixed bottom-28 right-4 md:bottom-6 md:right-6 z-40 p-3.5 md:p-4 rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-xl hover:opacity-90 active:scale-95 transition-transform"
       >
         <Sparkles className="w-6 h-6 animate-pulse" />
       </button>
@@ -545,7 +574,7 @@ function AIChatBot() {
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-24 right-6 z-50 w-80 bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col h-[400px] overflow-hidden"
+            className="fixed bottom-28 left-3 right-3 z-50 w-auto max-h-[calc(100dvh-9rem)] bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col h-[400px] overflow-hidden md:left-auto md:right-6 md:bottom-24 md:w-80"
           >
             {/* Header */}
             <div className="p-4 border-b border-slate-200/60 dark:border-slate-800/40 flex items-center justify-between bg-gradient-to-r from-indigo-500 to-indigo-600 text-white">

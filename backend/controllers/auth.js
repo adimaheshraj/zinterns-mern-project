@@ -6,6 +6,36 @@ const { sendWelcomeEmail } = require('../utils/mailer');
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretjwtkey_zinterns_2026';
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'supersecretrefreshjwtkey_zinterns_2026';
 
+function toPublicUserProfile(user) {
+  return {
+    _id: user._id,
+    employeeId: user.employeeId,
+    username: user.username,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    designation: user.designation,
+    department: user.department,
+    team: user.team,
+    reportingManager: user.reportingManager,
+    mentor: user.mentor,
+    status: user.status,
+    workMode: user.workMode,
+    location: user.location,
+    phone: user.phone,
+    gender: user.gender || 'male',
+    twoFactorEnabled: user.twoFactorEnabled,
+    avatar: user.avatar,
+    joiningDate: user.joiningDate,
+    internshipStartDate: user.internshipStartDate,
+    internshipEndDate: user.internshipEndDate,
+    durationMonths: user.durationMonths,
+    mustChangePassword: !!user.mustChangePassword,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt
+  };
+}
+
 // Register User (HR only)
 async function registerUser(req, res) {
   try {
@@ -118,7 +148,7 @@ async function registerUser(req, res) {
     console.log(`✉️ Sending Welcome Email to ${email} (Employee ID: ${employeeId})`);
 
     const requestOrigin = req.headers.origin || (req.protocol && req.get ? `${req.protocol}://${req.get('host')}` : '');
-    const appUrl = process.env.PUBLIC_APP_URL || (requestOrigin && !requestOrigin.includes('localhost:5000') ? requestOrigin : 'http://40.192.120.59:3000');
+    const appUrl = process.env.PUBLIC_APP_URL || (requestOrigin && !requestOrigin.includes('localhost:5000') ? requestOrigin : 'http://40.192.120.59/');
 
     // Send credentials directly to employee's email address
     const emailResult = await sendWelcomeEmail({
@@ -284,21 +314,7 @@ async function loginUser(req, res) {
       message: 'Login successful',
       token,
       refreshToken,
-      user: {
-        _id: user._id,
-        employeeId: user.employeeId,
-        username: user.username,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        department: user.department,
-        reportingManager: user.reportingManager,
-        mentor: user.mentor,
-        gender: user.gender || 'male',
-        twoFactorEnabled: user.twoFactorEnabled,
-        avatar: user.avatar,
-        mustChangePassword: !!user.mustChangePassword
-      }
+      user: toPublicUserProfile(user)
     });
   } catch (error) {
     res.status(500).json({ error: error.message || 'Server error during login' });
@@ -332,21 +348,7 @@ async function changePassword(req, res) {
 
     res.json({
       message: 'Password updated successfully',
-      user: {
-        _id: updatedUser._id,
-        employeeId: updatedUser.employeeId,
-        username: updatedUser.username,
-        name: updatedUser.name,
-        email: updatedUser.email,
-        role: updatedUser.role,
-        department: updatedUser.department,
-        reportingManager: updatedUser.reportingManager,
-        mentor: updatedUser.mentor,
-        gender: updatedUser.gender || 'male',
-        twoFactorEnabled: updatedUser.twoFactorEnabled,
-        avatar: updatedUser.avatar,
-        mustChangePassword: false
-      }
+      user: toPublicUserProfile(updatedUser)
     });
   } catch (error) {
     res.status(500).json({ error: error.message || 'Server error' });
@@ -375,23 +377,7 @@ async function updateProfile(req, res) {
 
     res.json({
       message: 'Profile updated successfully',
-      user: {
-        _id: updatedUser._id,
-        employeeId: updatedUser.employeeId,
-        username: updatedUser.username,
-        name: updatedUser.name,
-        email: updatedUser.email,
-        role: updatedUser.role,
-        department: updatedUser.department,
-        reportingManager: updatedUser.reportingManager,
-        mentor: updatedUser.mentor,
-        phone: updatedUser.phone,
-        gender: updatedUser.gender || 'male',
-        twoFactorEnabled: updatedUser.twoFactorEnabled,
-        avatar: updatedUser.avatar,
-        joiningDate: updatedUser.joiningDate,
-        durationMonths: updatedUser.durationMonths
-      }
+      user: toPublicUserProfile(updatedUser)
     });
   } catch (error) {
     res.status(500).json({ error: error.message || 'Server error updating profile' });
@@ -407,24 +393,7 @@ async function getMe(req, res) {
     }
 
     res.json({
-      user: {
-        _id: user._id,
-        employeeId: user.employeeId,
-        username: user.username,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        department: user.department,
-        reportingManager: user.reportingManager,
-        mentor: user.mentor,
-        phone: user.phone,
-        gender: user.gender || 'male',
-        twoFactorEnabled: user.twoFactorEnabled,
-        avatar: user.avatar,
-        joiningDate: user.joiningDate,
-        durationMonths: user.durationMonths,
-        mustChangePassword: !!user.mustChangePassword
-      }
+      user: toPublicUserProfile(user)
     });
   } catch (error) {
     res.status(500).json({ error: error.message || 'Server error' });

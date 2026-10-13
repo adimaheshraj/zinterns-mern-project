@@ -3,6 +3,12 @@ import { useApp } from '../context/AppContext';
 import { Settings, KeyRound, MapPin, User, Upload, CheckCircle, Camera } from 'lucide-react';
 import Avatar3DViewer from '../components/3d/Avatar3DViewer';
 
+const formatProfileDate = (value) => {
+  if (!value) return 'Not provided';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString();
+};
+
 export default function SettingsView() {
   const { user, token, API_URL, updateUserProfile } = useApp();
 
@@ -180,6 +186,45 @@ export default function SettingsView() {
         </p>
       </div>
 
+      <section className="p-5 sm:p-6 rounded-2xl glass-card border shadow-sm space-y-4 bg-white dark:bg-slate-900/60">
+        <div className="border-b dark:border-slate-800 pb-3">
+          <h2 className="font-bold text-slate-800 dark:text-slate-100">Your Profile Details</h2>
+          <p className="text-xs text-slate-400 mt-1">Account and work information associated with your profile.</p>
+        </div>
+        <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {[
+            ['Full name', user?.name],
+            ['Email', user?.email],
+            ['Username', user?.username],
+            ['Employee ID', user?.employeeId],
+            ['Role', user?.role],
+            ['Designation', user?.designation],
+            ['Department', user?.department],
+            ['Team', user?.team],
+            ['Reporting manager', user?.reportingManager],
+            ['Mentor', user?.mentor],
+            ['Phone', user?.phone],
+            ['Gender', user?.gender],
+            ['Account status', user?.status],
+            ['Work mode', user?.workMode],
+            ['Location', user?.location],
+            ['Joining date', formatProfileDate(user?.joiningDate)],
+            ['Internship start date', formatProfileDate(user?.internshipStartDate)],
+            ['Internship end date', formatProfileDate(user?.internshipEndDate)],
+            ['Duration', user?.durationMonths ? `${user.durationMonths} months` : 'Not provided'],
+            ['Two-factor authentication', user?.twoFactorEnabled ? 'Enabled' : 'Disabled'],
+            ['Account created', formatProfileDate(user?.createdAt)]
+          ].map(([label, value]) => (
+            <div key={label} className="min-w-0 rounded-xl border border-slate-200/70 dark:border-slate-800/70 bg-slate-50/70 dark:bg-slate-950/30 p-3">
+              <dt className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{label}</dt>
+              <dd className="mt-1 text-sm font-semibold text-slate-700 dark:text-slate-200 break-words">
+                {value || 'Not provided'}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* User Profile & Avatar Card */}
         <div className="p-6 rounded-2xl glass-card border shadow-sm space-y-5 bg-white dark:bg-slate-900/60">
@@ -234,7 +279,7 @@ export default function SettingsView() {
             {/* Gender Selection Option */}
             <div className="space-y-1.5">
               <label className="font-semibold text-slate-400 uppercase block">Gender Preference</label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => setProfileGender('male')}

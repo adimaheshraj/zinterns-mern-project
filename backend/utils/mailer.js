@@ -41,7 +41,7 @@ async function getTransporter() {
 async function sendWelcomeEmail({ email, name, employeeId, username, tempPassword, role, department, appUrl }) {
   try {
     const transporter = await getTransporter();
-    const portalUrl = appUrl || process.env.PUBLIC_APP_URL || 'http://40.192.120.59:3000';
+    const portalUrl = appUrl || process.env.PUBLIC_APP_URL || 'http://40.192.120.59/';
 
     const htmlContent = `
       <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background-color: #f8fafc; border-radius: 16px; border: 1px solid #e2e8f0;">
