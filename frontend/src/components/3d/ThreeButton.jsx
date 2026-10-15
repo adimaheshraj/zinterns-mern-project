@@ -1,104 +1,95 @@
 /**
- * ThreeButton — Global Three.js Animated Button
- * ─────────────────────────────────────────────
- * Drop-in replacement for <button>. Renders a live WebGL canvas
- * behind every button that fires a particle burst on click and
- * pulses a glowing ring on hover.
+ * ThreeButton — Beautiful Animated Button (Canvas 2D)
+ * ─────────────────────────────────────────────────────
+ * Uses Canvas 2D + globalCompositeOperation:'lighter' to
+ * replicate additive-blending particle bursts without
+ * creating a WebGL context (browsers cap WebGL at ~8-16
+ * contexts, which crashes when there are many buttons).
+ *
+ * Effects:
+ *  • Radial glow pulse on hover
+ *  • Particle burst (50 particles) on click
+ *  • Press / hover scale spring
  *
  * Variants:
- *  primary   — indigo/purple (default CTA)
- *  secondary — slate (cancel / ghost)
- *  gradient  — indigo→purple→pink (login / main CTA)
- *  danger    — rose (destructive)
- *  success   — emerald (confirm)
- *  ghost     — transparent, text only
- *  icon      — square, icon-only button
- *
- * Usage:
- *   import ThreeButton from '../3d/ThreeButton';
- *   <ThreeButton variant="primary" onClick={fn}>Save</ThreeButton>
+ *  primary   — indigo (default)
+ *  secondary — slate
+ *  gradient  — indigo→purple→pink
+ *  danger    — rose
+ *  success   — emerald
+ *  ghost     — transparent
+ *  icon      — square icon-only
  */
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import * as THREE from 'three';
 
-/* ── Variant config ───────────────────────────────────────── */
+/* ── Variant config ─────────────────────────────────────── */
 const VARIANTS = {
   primary: {
     bg: 'bg-indigo-600',
     hover: 'hover:bg-indigo-700',
     text: 'text-white',
     shadow: 'shadow-md shadow-indigo-500/30',
-    ring: '#818cf8',
-    particles: [0x818cf8, 0xa78bfa, 0xc4b5fd, 0xe0e7ff, 0xffffff],
+    glow: 'rgba(99,102,241,',   // indigo
+    particles: ['#818cf8','#a78bfa','#c4b5fd','#e0e7ff','#ffffff'],
   },
   secondary: {
     bg: 'bg-slate-100 dark:bg-slate-800',
     hover: 'hover:bg-slate-200 dark:hover:bg-slate-700',
     text: 'text-slate-700 dark:text-slate-200',
     shadow: '',
-    ring: '#94a3b8',
-    particles: [0x94a3b8, 0xcbd5e1, 0xe2e8f0],
+    glow: 'rgba(148,163,184,',
+    particles: ['#94a3b8','#cbd5e1','#e2e8f0','#f8fafc'],
   },
   gradient: {
     bg: 'bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600',
     hover: 'hover:opacity-90',
     text: 'text-white',
     shadow: 'shadow-lg shadow-indigo-500/40',
-    ring: '#a78bfa',
-    particles: [0x818cf8, 0xa78bfa, 0xec4899, 0xfdf4ff, 0xffffff],
+    glow: 'rgba(139,92,246,',
+    particles: ['#818cf8','#a78bfa','#ec4899','#f9a8d4','#ffffff'],
   },
   danger: {
     bg: 'bg-rose-600',
     hover: 'hover:bg-rose-700',
     text: 'text-white',
     shadow: 'shadow-md shadow-rose-500/30',
-    ring: '#fb7185',
-    particles: [0xfb7185, 0xfda4af, 0xffe4e6, 0xffffff],
+    glow: 'rgba(244,63,94,',
+    particles: ['#fb7185','#fda4af','#ffe4e6','#ffffff'],
   },
   success: {
     bg: 'bg-emerald-600',
     hover: 'hover:bg-emerald-700',
     text: 'text-white',
     shadow: 'shadow-md shadow-emerald-500/30',
-    ring: '#34d399',
-    particles: [0x34d399, 0x6ee7b7, 0xa7f3d0, 0xffffff],
+    glow: 'rgba(16,185,129,',
+    particles: ['#34d399','#6ee7b7','#a7f3d0','#d1fae5','#ffffff'],
   },
   ghost: {
     bg: 'bg-transparent',
     hover: 'hover:bg-slate-100 dark:hover:bg-slate-800/60',
     text: 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200',
     shadow: '',
-    ring: '#94a3b8',
-    particles: [0x94a3b8, 0xcbd5e1],
+    glow: 'rgba(148,163,184,',
+    particles: ['#94a3b8','#cbd5e1','#e2e8f0'],
   },
   icon: {
     bg: 'bg-transparent',
     hover: 'hover:bg-slate-100 dark:hover:bg-slate-800',
     text: 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200',
     shadow: '',
-    ring: '#818cf8',
-    particles: [0x818cf8, 0xa78bfa, 0xe0e7ff],
+    glow: 'rgba(99,102,241,',
+    particles: ['#818cf8','#a78bfa','#c4b5fd','#ffffff'],
   },
 };
 
-/* ── Glow ring canvas helper ──────────────────────────────── */
-function createGlowTexture(color) {
-  const c = document.createElement('canvas');
-  c.width = 64; c.height = 64;
-  const ctx = c.getContext('2d');
-  const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
-  g.addColorStop(0, `${color}ff`);
-  g.addColorStop(0.4, `${color}99`);
-  g.addColorStop(1, `${color}00`);
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.arc(32, 32, 32, 0, Math.PI * 2);
-  ctx.fill();
-  return new THREE.CanvasTexture(c);
+/* ── Hex colour → {r,g,b} ──────────────────────────────── */
+function hexToRgb(hex) {
+  const n = parseInt(hex.replace('#', ''), 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
 }
 
-/* ── Main component ───────────────────────────────────────── */
+/* ── Main component ─────────────────────────────────────── */
 export default function ThreeButton({
   children,
   onClick,
@@ -110,206 +101,184 @@ export default function ThreeButton({
   'aria-label': ariaLabel,
   style,
 }) {
-  const mountRef = useRef(null);
+  const mountRef  = useRef(null);
   const canvasRef = useRef(null);
-  const threeRef = useRef(null);
-  const rafRef = useRef(null);
-  const [hovered, setHovered] = useState(false);
+  const stateRef  = useRef({
+    rafId: null,
+    particles: [],
+    bursting: false,
+    burstTime: 0,
+    hovOpacity: 0,
+    targetHov: 0,
+  });
+  const [hovered,  setHovered]  = useState(false);
   const [pressing, setPressing] = useState(false);
 
   const cfg = VARIANTS[variant] || VARIANTS.primary;
 
-  /* ── Init Three.js scene ─────────────────────────────── */
-  const initThree = useCallback(() => {
-    const mount = mountRef.current;
+  /* ── Canvas 2D draw loop ───────────────────────────────── */
+  const initCanvas = useCallback(() => {
+    const mount  = mountRef.current;
     const canvas = canvasRef.current;
     if (!mount || !canvas) return;
 
-    const w = mount.offsetWidth || 120;
-    const h = mount.offsetHeight || 40;
-    canvas.width = w;
-    canvas.height = h;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w   = mount.offsetWidth  || 120;
+    const h   = mount.offsetHeight || 40;
+    canvas.width  = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width  = `${w}px`;
+    canvas.style.height = `${h}px`;
 
-    let renderer;
-    try {
-      renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-    } catch {
-      return; // No WebGL
-    }
-    renderer.setSize(w, h, false);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.scale(dpr, dpr);
 
-    const scene = new THREE.Scene();
-    const cam = new THREE.OrthographicCamera(-w / 2, w / 2, h / 2, -h / 2, 0.1, 100);
-    cam.position.z = 10;
+    const s = stateRef.current;
 
-    /* Particles */
-    const PCOUNT = 50;
-    const pos = new Float32Array(PCOUNT * 3);
-    const col = new Float32Array(PCOUNT * 3);
-    const sz = new Float32Array(PCOUNT);
-    const pColors = cfg.particles;
-
-    const pData = Array.from({ length: PCOUNT }, (_, i) => {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = 0.5 + Math.random() * 1.8;
-      const c = new THREE.Color(pColors[i % pColors.length]);
-      col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
-      sz[i] = 2.5 + Math.random() * 4.5;
-      pos[i * 3] = 9999; pos[i * 3 + 1] = 9999;
-      return { angle, speed, life: 1, maxLife: 0.55 + Math.random() * 0.7 };
+    /* Build particle pool */
+    s.particles = Array.from({ length: 50 }, () => {
+      const col = cfg.particles[Math.floor(Math.random() * cfg.particles.length)];
+      const rgb = hexToRgb(col);
+      return {
+        angle: Math.random() * Math.PI * 2,
+        speed: 40 + Math.random() * 110,   // px/s
+        radius: 2 + Math.random() * 4,
+        r: rgb.r, g: rgb.g, b: rgb.b,
+        life: 1,       // starts at 1 (dead)
+        maxLife: 0.55 + Math.random() * 0.6,
+        x: 0, y: 0,
+      };
     });
 
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    let last = performance.now();
 
-    const glowTex = createGlowTexture('#ffffff');
-    const mat = new THREE.PointsMaterial({
-      vertexColors: true,
-      size: 10,
-      map: glowTex,
-      transparent: true,
-      opacity: 0,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-      sizeAttenuation: false,
-    });
+    function draw(now) {
+      s.rafId = requestAnimationFrame(draw);
+      const dt = Math.min((now - last) / 1000, 0.05);
+      last = now;
 
-    const points = new THREE.Points(geo, mat);
-    scene.add(points);
+      ctx.clearRect(0, 0, w, h);
 
-    /* Hover glow plane */
-    const glowGeo = new THREE.PlaneGeometry(w * 1.6, h * 1.6);
-    const ringColor = cfg.ring;
-    const glowMatPlane = new THREE.MeshBasicMaterial({
-      color: new THREE.Color(ringColor),
-      transparent: true,
-      opacity: 0,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-    });
-    const glowMesh = new THREE.Mesh(glowGeo, glowMatPlane);
-    glowMesh.position.z = 0;
-    scene.add(glowMesh);
-
-    /* State */
-    let bursting = false;
-    let burstTime = 0;
-    let hovOpacity = 0;
-    let targetHovOpacity = 0;
-
-    function burst() {
-      bursting = true;
-      burstTime = 0;
-      pData.forEach(p => { p.life = 0; });
-    }
-
-    function setHoverGlow(on) {
-      targetHovOpacity = on ? 0.08 : 0;
-    }
-
-    function animate() {
-      rafRef.current = requestAnimationFrame(animate);
-
-      /* Hover glow lerp */
-      hovOpacity += (targetHovOpacity - hovOpacity) * 0.12;
-      glowMatPlane.opacity = hovOpacity;
-
-      if (bursting) {
-        burstTime += 0.018;
-        mat.opacity = Math.min(1, burstTime * 5);
-
-        pData.forEach((p, i) => {
-          p.life += 0.018;
-          if (p.life > p.maxLife) {
-            pos[i * 3] = 9999; pos[i * 3 + 1] = 9999;
-            return;
-          }
-          const frac = p.life / p.maxLife;
-          const r = p.speed * p.life * Math.min(w, h) * 0.55;
-          pos[i * 3] = Math.cos(p.angle) * r;
-          pos[i * 3 + 1] = Math.sin(p.angle) * r;
-          pos[i * 3 + 2] = 0;
-          // Fade the whole mat
-        });
-        geo.attributes.position.needsUpdate = true;
-
-        if (burstTime > 1.1) {
-          bursting = false;
-          mat.opacity = 0;
-          pData.forEach((_, i) => { pos[i * 3] = 9999; pos[i * 3 + 1] = 9999; });
-          geo.attributes.position.needsUpdate = true;
-        }
+      /* ── Hover glow ─────────────────────────────────── */
+      s.hovOpacity += (s.targetHov - s.hovOpacity) * (1 - Math.pow(0.01, dt * 8));
+      if (s.hovOpacity > 0.004) {
+        const grad = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.max(w, h) * 0.65);
+        grad.addColorStop(0, `${cfg.glow}${(s.hovOpacity * 0.55).toFixed(3)})`);
+        grad.addColorStop(1, `${cfg.glow}0)`);
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
       }
 
-      renderer.render(scene, cam);
-    }
-    animate();
+      /* ── Burst particles ────────────────────────────── */
+      if (!s.bursting) return;
 
-    threeRef.current = { renderer, burst, setHoverGlow, geo, mat, glowMatPlane, glowTex };
+      s.burstTime += dt;
+      let anyAlive = false;
+
+      ctx.globalCompositeOperation = 'lighter'; // additive blend = glowy!
+      s.particles.forEach(p => {
+        if (p.life >= p.maxLife) return;
+        p.life += dt;
+        const frac   = p.life / p.maxLife;
+        const alpha  = frac < 0.3 ? frac / 0.3 : 1 - (frac - 0.3) / 0.7;
+        const dist   = p.speed * p.life;
+        p.x = Math.cos(p.angle) * dist;
+        p.y = Math.sin(p.angle) * dist;
+
+        if (alpha > 0.01) {
+          anyAlive = true;
+          const cx = w / 2 + p.x;
+          const cy = h / 2 + p.y;
+          const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, p.radius * (1 + frac));
+          grad.addColorStop(0, `rgba(${p.r},${p.g},${p.b},${alpha.toFixed(3)})`);
+          grad.addColorStop(1, `rgba(${p.r},${p.g},${p.b},0)`);
+          ctx.beginPath();
+          ctx.arc(cx, cy, p.radius * (1 + frac * 0.5), 0, Math.PI * 2);
+          ctx.fillStyle = grad;
+          ctx.fill();
+        }
+      });
+
+      ctx.globalCompositeOperation = 'source-over';
+
+      if (!anyAlive) {
+        s.bursting = false;
+        s.burstTime = 0;
+      }
+    }
+
+    s.rafId = requestAnimationFrame(draw);
   }, [cfg]);
 
   useEffect(() => {
-    // Small delay so the DOM has dimensions
-    const id = setTimeout(initThree, 50);
+    const id = setTimeout(initCanvas, 30);
     return () => {
       clearTimeout(id);
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      const t = threeRef.current;
-      if (t) {
-        t.geo?.dispose();
-        t.mat?.dispose();
-        t.glowMatPlane?.dispose();
-        t.glowTex?.dispose();
-        t.renderer?.dispose();
-        threeRef.current = null;
-      }
+      const s = stateRef.current;
+      if (s.rafId) cancelAnimationFrame(s.rafId);
+      s.rafId = null;
     };
-  }, [initThree]);
+  }, [initCanvas]);
+
+  /* ── Burst trigger ─────────────────────────────────────── */
+  const triggerBurst = () => {
+    const s = stateRef.current;
+    s.bursting = true;
+    s.burstTime = 0;
+    s.particles.forEach(p => {
+      p.life = 0;
+      p.angle = Math.random() * Math.PI * 2;
+      p.speed = 40 + Math.random() * 110;
+      p.radius = 2 + Math.random() * 4;
+      const col = cfg.particles[Math.floor(Math.random() * cfg.particles.length)];
+      const rgb = hexToRgb(col);
+      p.r = rgb.r; p.g = rgb.g; p.b = rgb.b;
+    });
+  };
 
   const handleClick = (e) => {
-    threeRef.current?.burst();
+    triggerBurst();
     setPressing(true);
-    setTimeout(() => setPressing(false), 200);
+    setTimeout(() => setPressing(false), 180);
     if (onClick) onClick(e);
   };
 
   const handleMouseEnter = () => {
     setHovered(true);
-    threeRef.current?.setHoverGlow(true);
+    stateRef.current.targetHov = 1;
   };
-
   const handleMouseLeave = () => {
     setHovered(false);
-    threeRef.current?.setHoverGlow(false);
+    stateRef.current.targetHov = 0;
   };
-
-  const isIcon = variant === 'icon';
 
   return (
     <div
       ref={mountRef}
       className={[
-        'relative overflow-hidden select-none',
-        isIcon ? 'rounded-xl' : 'rounded-xl',
+        'relative overflow-hidden select-none rounded-xl',
         cfg.bg,
         cfg.shadow,
         disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
-        'transition-all duration-150',
-        pressing && !disabled ? 'scale-[0.96]' : hovered && !disabled ? 'scale-[1.02]' : 'scale-100',
+        'transition-transform duration-150 ease-out',
+        pressing && !disabled ? 'scale-[0.96]'
+          : hovered && !disabled ? 'scale-[1.025]'
+          : 'scale-100',
         className,
       ].join(' ')}
       style={style}
     >
-      {/* Three.js WebGL canvas — behind everything */}
+      {/* Canvas 2D — particle/glow layer */}
       <canvas
         ref={canvasRef}
-        className="absolute inset-0 w-full h-full pointer-events-none z-0"
+        aria-hidden="true"
+        className="absolute inset-0 pointer-events-none z-0"
         style={{ mixBlendMode: 'screen' }}
       />
 
-      {/* Actual button — transparent bg so canvas shows through */}
+      {/* Actual clickable button */}
       <button
         type={type}
         disabled={disabled}
@@ -322,9 +291,11 @@ export default function ThreeButton({
           'relative z-10 w-full h-full flex items-center justify-center gap-2',
           cfg.text,
           cfg.hover,
-          isIcon ? 'p-2' : 'px-4 py-3 font-bold text-xs uppercase tracking-wider',
+          variant === 'icon' ? 'p-2' : 'px-4 py-3 font-bold text-xs uppercase tracking-wider',
           'transition-colors duration-150',
-          'bg-transparent border-0 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 rounded-xl',
+          'bg-transparent border-0 outline-none',
+          'focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 rounded-xl',
+          disabled ? 'pointer-events-none' : '',
         ].join(' ')}
         style={{ fontFamily: 'inherit' }}
       >
