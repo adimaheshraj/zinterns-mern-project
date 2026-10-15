@@ -98,16 +98,19 @@ export default function OrgTree({ onSelectUser }) {
   const hrRoots = treeData?.hrRoots || [];
   const hrReports = treeData?.hrReports || [];
   const managers = treeData?.tree || [];
+  const sortByName = (users = []) => [...users].sort((a, b) =>
+    (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
+  );
 
   // Filter managers based on department & search
-  const filteredManagers = managers.filter(rm => {
+  const filteredManagers = sortByName(managers.filter(rm => {
     const matchesDept = departmentFilter === 'All' || rm.department === departmentFilter;
     const matchesSearch = !searchTerm ||
       rm.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       rm.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
       rm.mentors?.some(m => m.name.toLowerCase().includes(searchTerm.toLowerCase()) || m.interns?.some(i => i.name.toLowerCase().includes(searchTerm.toLowerCase())));
     return matchesDept && matchesSearch;
-  });
+  }));
 
   return (
     <div ref={containerRef} className={`space-y-4 ${isFullscreen ? 'bg-slate-950 p-6 overflow-auto text-white' : ''}`}>
@@ -198,7 +201,7 @@ export default function OrgTree({ onSelectUser }) {
               HR / Executive Control
             </span>
             <div className="flex gap-6 flex-wrap justify-center">
-              {hrRoots.map(hr => (
+              {sortByName(hrRoots).map(hr => (
                 <TreeNodeCard
                   key={hr._id}
                   user={hr}
@@ -212,7 +215,7 @@ export default function OrgTree({ onSelectUser }) {
               <>
                 <div className="w-0.5 h-6 bg-purple-500/50"></div>
                 <div className="flex gap-6 flex-wrap justify-center">
-                  {hrReports.map(hr => (
+                  {sortByName(hrReports).map(hr => (
                     <TreeNodeCard
                       key={hr._id}
                       user={hr}
@@ -238,7 +241,7 @@ export default function OrgTree({ onSelectUser }) {
             <div className="flex flex-wrap gap-12 justify-center items-start w-full">
               {filteredManagers.map(rm => {
                 const isRMExpanded = expandedNodes[rm.employeeId] !== false;
-                const mentors = rm.mentors || [];
+                const mentors = sortByName(rm.mentors);
 
                 return (
                   <div key={rm._id} className="flex flex-col items-center space-y-6 bg-slate-950/60 p-6 rounded-3xl border border-slate-800/80 shadow-xl">
@@ -259,7 +262,7 @@ export default function OrgTree({ onSelectUser }) {
                         <div className="flex gap-8 flex-wrap justify-center">
                           {mentors.map(m => {
                             const isMentorExpanded = expandedNodes[m.employeeId] !== false;
-                            const interns = m.interns || [];
+                            const interns = sortByName(m.interns);
 
                             return (
                               <div key={m._id} className="flex flex-col items-center space-y-4">
