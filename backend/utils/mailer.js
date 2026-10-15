@@ -15,11 +15,15 @@ async function getTransporter() {
     throw new Error('SMTP configuration is incomplete. Set SMTP_HOST, SMTP_PORT, SMTP_USER and SMTP_PASS in backend/.env.');
   }
 
+  const smtpPassword = host.toLowerCase() === 'smtp.gmail.com'
+    ? pass.replace(/\s/g, '')
+    : pass;
+
   const transporter = nodemailer.createTransport({
     host,
     port,
     secure,
-    auth: { user, pass }
+    auth: { user: user.trim(), pass: smtpPassword }
   });
 
   console.log(`📧 SMTP configured: host=${host} port=${port} secure=${secure} user=${user}`);
