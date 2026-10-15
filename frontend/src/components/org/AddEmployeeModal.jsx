@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { X, UserPlus, Sparkles, Check, Copy, Shield, Users, Briefcase, Building } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import ThreeButton from '../3d/ThreeButton';
 
+/* ─────────────────────────────────────────────────────────
+   Main Modal Component
+───────────────────────────────────────────────────────── */
 export default function AddEmployeeModal({ isOpen, onClose, onUserCreated }) {
   const { token, API_URL } = useApp();
 
@@ -86,6 +90,8 @@ export default function AddEmployeeModal({ isOpen, onClose, onUserCreated }) {
         location
       };
 
+      console.log('[AddEmployeeModal] Submitting register payload:', JSON.stringify(payload, null, 2));
+
       const res = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
         headers: {
@@ -96,6 +102,8 @@ export default function AddEmployeeModal({ isOpen, onClose, onUserCreated }) {
       });
 
       const data = await res.json();
+      console.log('[AddEmployeeModal] Server response:', data);
+
       if (!res.ok) {
         throw new Error(data.error || 'Failed to create user account');
       }
@@ -103,6 +111,7 @@ export default function AddEmployeeModal({ isOpen, onClose, onUserCreated }) {
       setCreatedData(data);
       if (onUserCreated) onUserCreated();
     } catch (err) {
+      console.error('[AddEmployeeModal] Error:', err.message);
       setErrorMsg(err.message);
     } finally {
       setLoading(false);
@@ -197,12 +206,14 @@ export default function AddEmployeeModal({ isOpen, onClose, onUserCreated }) {
               </div>
             </div>
 
-            <button
+            <ThreeButton
+              variant="primary"
               onClick={handleResetForm}
-              className="w-full py-3.5 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 transition-colors"
+              className="w-full !py-4 !rounded-2xl"
+              style={{ textTransform: 'none', letterSpacing: 'normal', fontSize: '14px', fontWeight: 800 }}
             >
-              Done & Close
-            </button>
+              ✓ Done &amp; Close
+            </ThreeButton>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="p-6 space-y-5 text-xs max-h-[75vh] overflow-y-auto">
@@ -215,7 +226,7 @@ export default function AddEmployeeModal({ isOpen, onClose, onUserCreated }) {
             {/* Personal Details */}
             <div className="space-y-3">
               <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
-                <Users className="w-3.5 h-3.5" /> 1. Personal & Identity
+                <Users className="w-3.5 h-3.5" /> 1. Personal &amp; Identity
               </span>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
@@ -270,7 +281,7 @@ export default function AddEmployeeModal({ isOpen, onClose, onUserCreated }) {
             {/* Role & Designation */}
             <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
               <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
-                <Briefcase className="w-3.5 h-3.5" /> 2. Role & Hierarchy Position
+                <Briefcase className="w-3.5 h-3.5" /> 2. Role &amp; Hierarchy Position
               </span>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
@@ -416,22 +427,38 @@ export default function AddEmployeeModal({ isOpen, onClose, onUserCreated }) {
               </div>
             </div>
 
-            {/* Submit */}
+            {/* Three.js Submit Buttons */}
             <div className="pt-4 flex gap-3">
-              <button
-                type="button"
+              <ThreeButton
+                variant="secondary"
                 onClick={handleResetForm}
-                className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold hover:bg-slate-200 transition-colors"
+                className="flex-1 !py-3.5 !rounded-xl"
+                style={{ textTransform: 'none', letterSpacing: 'normal', fontSize: '13px', fontWeight: 700 }}
               >
                 Cancel
-              </button>
-              <button
+              </ThreeButton>
+              <ThreeButton
                 type="submit"
+                variant="primary"
                 disabled={loading}
-                className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg transition-colors flex items-center justify-center gap-2 uppercase tracking-wider"
+                className="flex-1 !py-3.5 !rounded-xl"
+                style={{ textTransform: 'none', letterSpacing: 'normal', fontSize: '13px', fontWeight: 700 }}
               >
-                {loading ? 'Creating Employee...' : 'Create Employee Account'}
-              </button>
+                {loading ? (
+                  <>
+                    <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                    </svg>
+                    Creating…
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="w-4 h-4" />
+                    Create Employee Account
+                  </>
+                )}
+              </ThreeButton>
             </div>
           </form>
         )}

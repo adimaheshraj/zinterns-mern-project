@@ -12,27 +12,49 @@ async function getTransporter() {
   const pass = process.env.SMTP_PASS;
 
   if (!host || !user || !pass) {
-    throw new Error('SMTP configuration is incomplete. Set SMTP_HOST, SMTP_PORT, SMTP_USER and SMTP_PASS in backend/.env.');
+    const missing = [!host && 'SMTP_HOST', !user && 'SMTP_USER', !pass && 'SMTP_PASS'].filter(Boolean).join(', ');
+    console.error(`❌ SMTP configuration is incomplete. Missing: ${missing}`);
+    console.error('   → Set these variables in backend/.env and restart the server.');
+    throw new Error(`SMTP configuration is incomplete. Set ${missing} in backend/.env.`);
   }
 
-  const smtpPassword = host.toLowerCase() === 'smtp.gmail.com'
-    ? pass.replace(/\s/g, '')
-    : pass;
+  // Always strip spaces — Gmail App Passwords are displayed with spaces but must be sent without
+  const smtpPassword = pass.replace(/\s/g, '');
+
+  console.log(`📧 Creating SMTP transporter: host=${host} port=${port} secure=${secure} user=${user}`);
 
   const transporter = nodemailer.createTransport({
     host,
     port,
     secure,
-    auth: { user: user.trim(), pass: smtpPassword }
+    auth: { user: user.trim(), pass: smtpPassword },
+    tls: {
+      // Accept self-signed certs in dev; Gmail has valid certs anyway
+      rejectUnauthorized: false
+    }
   });
 
-  console.log(`📧 SMTP configured: host=${host} port=${port} secure=${secure} user=${user}`);
   try {
     await transporter.verify();
-    console.log('📧 SMTP connection verified. Real email delivery is enabled.');
+    console.log('✅ SMTP connection verified. Real email delivery is ENABLED.');
+    console.log(`   host=${host} port=${port} user=${user}`);
   } catch (error) {
-    console.error(`❌ SMTP connection verification failed: ${error.message}`);
-    throw error;
+    // Do NOT cache a broken transporter
+    console.error(`❌ SMTP connection verification FAILED.`);
+    console.error(`   code=${error.code || 'unknown'}`);
+    console.error(`   message=${error.message}`);
+    console.error(`   response=${error.response || 'none'}`);
+    if (error.code === 'EAUTH') {
+      console.error('');
+      console.error('🔑 FIX: Gmail rejected the login.');
+      console.error('   1. SMTP_USER must be your full Gmail address (e.g. you@gmail.com)');
+      console.error('   2. SMTP_PASS must be a 16-char Google App Password (no spaces).');
+      console.error('      Generate one at: https://myaccount.google.com/apppasswords');
+      console.error('      Example: qqbvkukazmxhkvps  ← no spaces!');
+      console.error('   3. 2-Step Verification must be ON for your Google account.');
+      console.error('');
+    }
+    throw error; // let the caller handle it; cache remains null
   }
 
   cachedTransporter = transporter;
@@ -49,6 +71,8 @@ async function sendWelcomeEmail({ email, name, employeeId, username, tempPasswor
     }
 
     const recipient = String(email).trim();
+    console.log(`\n📨 Sending welcome email → ${recipient} (${employeeId})`);
+
     const transporter = await getTransporter();
     const portalUrl = appUrl || process.env.PUBLIC_APP_URL || 'http://40.192.120.59/';
 
@@ -134,10 +158,9 @@ async function sendWelcomeEmail({ email, name, employeeId, username, tempPasswor
       throw new Error(`SMTP server did not accept the recipient ${recipient}.`);
     }
 
-    console.log('✉️ SMTP server accepted the message for delivery.');
+    console.log('✅ Email successfully accepted by SMTP server.');
     console.log(`   recipient=${recipient}`);
     console.log(`   messageId=${info.messageId || 'not provided'}`);
-    console.log(`   envelope=${JSON.stringify(info.envelope || {})}`);
     console.log(`   accepted=${JSON.stringify(accepted)}`);
     console.log(`   rejected=${JSON.stringify(rejected)}`);
     console.log(`   response=${info.response || 'not provided'}`);
@@ -150,9 +173,29 @@ async function sendWelcomeEmail({ email, name, employeeId, username, tempPasswor
       response: info.response || ''
     };
   } catch (error) {
-    console.error(`❌ SMTP delivery failed for ${email || 'unknown recipient'}: ${error.message}`);
-    console.error(`   code=${error.code || 'unknown'} responseCode=${error.responseCode || 'unknown'}`);
+    console.error(`\n❌ Email delivery FAILED for ${email || 'unknown recipient'}`);
+    console.error(`   code=${error.code || 'unknown'}`);
+    console.error(`   responseCode=${error.responseCode || 'unknown'}`);
+    console.error(`   message=${error.message}`);
     console.error(`   response=${error.response || 'not provided'}`);
+
+    if (error.code === 'EAUTH') {
+      console.error('');
+      console.error('🔑 GMAIL AUTHENTICATION ERROR — How to fix:');
+      console.error('   1. Make sure SMTP_USER is your full Gmail address.');
+      console.error('   2. Generate a 16-char App Password at https://myaccount.google.com/apppasswords');
+      console.error('   3. Set SMTP_PASS=<16chars_no_spaces> in backend/.env');
+      console.error('   4. Restart the backend server.');
+    } else if (error.code === 'ECONNECTION' || error.code === 'ECONNREFUSED') {
+      console.error('');
+      console.error('🌐 SMTP CONNECTION ERROR — How to fix:');
+      console.error('   • Check SMTP_HOST and SMTP_PORT in backend/.env');
+      console.error('   • For Gmail use: SMTP_HOST=smtp.gmail.com SMTP_PORT=587 SMTP_SECURE=false');
+    }
+
+    // Clear cache so next request tries a fresh transporter
+    cachedTransporter = null;
+
     return { success: false, error: error.message, code: error.code || 'UNKNOWN' };
   }
 }

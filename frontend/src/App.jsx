@@ -28,6 +28,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import Background3D from './components/3d/Background3D';
 import Hero3DCanvas from './components/3d/Hero3DCanvas';
+import ThreeButton from './components/3d/ThreeButton';
 
 // Import sub-pages
 import Dashboard from './pages/Dashboard';
@@ -125,65 +126,38 @@ export default function App() {
 
         {/* Organization Navigation Bar (shown when in Organization space or Directory tab) */}
         {(activeSpace === 'organization' || activeTab === 'directory') && (
-          <div className="bg-white/70 dark:bg-slate-900/70 border-b border-slate-200/60 dark:border-slate-800/40 px-3 sm:px-6 py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 overflow-x-auto z-20 backdrop-blur-md">
+        <div className="bg-white/70 dark:bg-slate-900/70 border-b border-slate-200/60 dark:border-slate-800/40 px-3 sm:px-6 py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 overflow-x-auto z-20 backdrop-blur-md">
             <div className="flex items-center gap-2 min-w-0 overflow-x-auto">
               <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mr-2 flex items-center gap-1 whitespace-nowrap">
                 <Building className="w-3.5 h-3.5 text-indigo-500" /> Org Module:
               </span>
-              <button
-                onClick={() => setOrgSubTab('employee_list')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  orgSubTab === 'employee_list'
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/40'
-                }`}
-              >
-                Employee List
-              </button>
-
-              <button
-                onClick={() => setOrgSubTab('employee_tree')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  orgSubTab === 'employee_tree'
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/40'
-                }`}
-              >
-                Employee Tree
-              </button>
-
-              <button
-                onClick={() => setOrgSubTab('department_tree')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  orgSubTab === 'department_tree'
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/40'
-                }`}
-              >
-                Department Tree
-              </button>
-
-              {isHR && (
-                <button
-                  onClick={() => setOrgSubTab('assignments')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                    orgSubTab === 'assignments'
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/40'
-                  }`}
+              {[
+                { key: 'employee_list', label: 'Employee List' },
+                { key: 'employee_tree', label: 'Employee Tree' },
+                { key: 'department_tree', label: 'Department Tree' },
+                ...(isHR ? [{ key: 'assignments', label: 'Assignment Management' }] : []),
+              ].map(({ key, label }) => (
+                <ThreeButton
+                  key={key}
+                  variant={orgSubTab === key ? 'primary' : 'ghost'}
+                  onClick={() => setOrgSubTab(key)}
+                  className="!px-3 !py-1.5 !rounded-xl whitespace-nowrap"
+                  style={{ textTransform: 'none', letterSpacing: 'normal', fontSize: '12px', fontWeight: 700 }}
                 >
-                  Assignment Management
-                </button>
-              )}
+                  {label}
+                </ThreeButton>
+              ))}
             </div>
 
             {isHR && (
-              <button
+              <ThreeButton
+                variant="primary"
                 onClick={() => setIsAddEmployeeOpen(true)}
-                className="px-3.5 py-1.5 bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400 rounded-xl text-xs font-extrabold hover:bg-indigo-100 transition-colors flex items-center gap-1.5 whitespace-nowrap self-start sm:self-auto"
+                className="!px-3.5 !py-1.5 whitespace-nowrap self-start sm:self-auto"
+                style={{ textTransform: 'none', letterSpacing: 'normal', fontSize: '12px', fontWeight: 800 }}
               >
                 <UserPlus className="w-3.5 h-3.5" /> + Add Employee
-              </button>
+              </ThreeButton>
             )}
           </div>
         )}
@@ -283,18 +257,16 @@ function Sidebar({ activeTab, setActiveTab }) {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
           return (
-            <button
+            <ThreeButton
               key={item.id}
+              variant={isActive ? 'primary' : 'ghost'}
               onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-xs font-bold transition-all duration-200 ${
-                isActive
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10'
-                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/40'
-              }`}
+              className={`w-full justify-start gap-3.5 !uppercase-none !tracking-normal !text-xs !font-bold ${isActive ? '' : ''}`}
+              style={{ textTransform: 'none', letterSpacing: 'normal', paddingLeft: '1rem', paddingRight: '1rem', paddingTop: '0.75rem', paddingBottom: '0.75rem' }}
             >
-              <Icon className="w-4.5 h-4.5" />
+              <Icon className="w-4 h-4 shrink-0" />
               {item.label}
-            </button>
+            </ThreeButton>
           );
         })}
       </nav>
@@ -322,13 +294,15 @@ function Sidebar({ activeTab, setActiveTab }) {
             </span>
           </div>
         </div>
-        <button
+        <ThreeButton
+          variant="icon"
           onClick={logout}
-          className="p-2 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-slate-400 hover:text-rose-500 rounded-xl transition-colors"
           title="Sign Out"
+          aria-label="Sign Out"
+          className="!rounded-xl"
         >
-          <LogOut className="w-4.5 h-4.5" />
-        </button>
+          <LogOut className="w-4 h-4 text-slate-400 hover:text-rose-500 transition-colors" />
+        </ThreeButton>
       </div>
     </aside>
   );
@@ -344,19 +318,17 @@ function MobileNav({ activeTab, setActiveTab }) {
         const Icon = item.icon;
         const isActive = activeTab === item.id;
         return (
-          <button
+          <ThreeButton
             key={item.id}
+            variant={isActive ? 'primary' : 'ghost'}
             onClick={() => setActiveTab(item.id)}
             aria-current={isActive ? 'page' : undefined}
-            className={`min-w-0 min-h-10 flex flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 text-[9px] font-bold leading-tight ${
-              isActive
-                ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-300'
-                : 'text-slate-500 dark:text-slate-400'
-            }`}
+            className="min-w-0 min-h-10 flex-col !gap-0.5 !rounded-xl !px-0.5 !py-1.5 flex-1"
+            style={{ textTransform: 'none', letterSpacing: 'normal', fontSize: '9px', fontWeight: 700, lineHeight: 1.2 }}
           >
             <Icon className="w-4 h-4 shrink-0" />
-            <span className="w-full truncate text-center">{item.mobileLabel}</span>
-          </button>
+            <span className="w-full truncate text-center" style={{ fontSize: 9 }}>{item.mobileLabel}</span>
+          </ThreeButton>
         );
       })}
     </nav>
@@ -407,36 +379,21 @@ function Header({ activeSpace, setActiveSpace, onOpenWFH, onOpenAddEmployee }) {
       {/* Top Space Switcher Tabs */}
       <div className="min-w-0 flex items-center justify-center gap-3">
         <div className="max-w-full flex gap-1 bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl border border-slate-200/60 dark:border-slate-800/60">
-          <button
-            onClick={() => setActiveSpace('my_space')}
-            className={`px-2.5 sm:px-3.5 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap ${
-              activeSpace === 'my_space'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800'
-            }`}
-          >
-            My Space
-          </button>
-          <button
-            onClick={() => setActiveSpace('team_space')}
-            className={`px-2.5 sm:px-3.5 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap ${
-              activeSpace === 'team_space'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800'
-            }`}
-          >
-            Team Space
-          </button>
-          <button
-            onClick={() => setActiveSpace('organization')}
-            className={`px-2.5 sm:px-3.5 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap ${
-              activeSpace === 'organization'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800'
-            }`}
-          >
-            Organization
-          </button>
+          {[
+            { key: 'my_space', label: 'My Space' },
+            { key: 'team_space', label: 'Team Space' },
+            { key: 'organization', label: 'Organization' },
+          ].map(({ key, label }) => (
+            <ThreeButton
+              key={key}
+              variant={activeSpace === key ? 'primary' : 'ghost'}
+              onClick={() => setActiveSpace(key)}
+              className="!px-2.5 sm:!px-3.5 !py-1.5 !rounded-xl whitespace-nowrap"
+              style={{ textTransform: 'none', letterSpacing: 'normal', fontSize: '11px', fontWeight: 700 }}
+            >
+              {label}
+            </ThreeButton>
+          ))}
         </div>
 
         <span className="text-xs text-slate-400 font-bold hidden lg:inline">ID: {user.employeeId}</span>
@@ -444,52 +401,60 @@ function Header({ activeSpace, setActiveSpace, onOpenWFH, onOpenAddEmployee }) {
 
       <div className="flex items-center justify-end gap-1.5 sm:gap-3">
         {/* WFH Pass Action Button */}
-        <button
+        <ThreeButton
+          variant="secondary"
           onClick={onOpenWFH}
-          className="px-3 py-1.5 bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/40 rounded-xl font-bold text-xs hover:bg-indigo-100 transition-colors flex items-center gap-1.5"
+          className="!px-3 !py-1.5"
+          style={{ textTransform: 'none', letterSpacing: 'normal', fontSize: '12px', fontWeight: 700 }}
         >
-          <Home className="w-3.5 h-3.5" /> <span className="hidden sm:inline">WFH Pass</span>
-        </button>
+          <Home className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">WFH Pass</span>
+        </ThreeButton>
 
         {isHR && (
-          <button
+          <ThreeButton
+            variant="gradient"
             onClick={onOpenAddEmployee}
-            className="px-3.5 py-1.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-extrabold text-xs shadow hover:opacity-90 transition-opacity flex items-center gap-1"
+            className="!px-3.5 !py-1.5"
+            style={{ textTransform: 'none', letterSpacing: 'normal', fontSize: '12px', fontWeight: 800 }}
           >
-            <UserPlus className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Add Employee</span>
-          </button>
+            <UserPlus className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Add Employee</span>
+          </ThreeButton>
         )}
 
         {/* Dark/Light mode Toggle */}
-        <button
+        <ThreeButton
+          variant="icon"
           onClick={toggleTheme}
-          className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
           aria-label="Toggle theme"
           title="Toggle theme"
         >
           {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-        </button>
+        </ThreeButton>
 
-        <button
+        <ThreeButton
+          variant="icon"
           onClick={logout}
-          className="md:hidden p-2 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-slate-400 hover:text-rose-500 rounded-xl transition-colors"
+          className="md:hidden"
           aria-label="Sign out"
           title="Sign out"
         >
           <LogOut className="w-5 h-5" />
-        </button>
+        </ThreeButton>
 
         {/* Notifications Panel */}
         <div className="relative">
-          <button
+          <ThreeButton
+            variant="icon"
             onClick={() => setShowNotifications(!showNotifications)}
-            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors relative"
+            aria-label="Notifications"
           >
             <Bell className="w-5 h-5" />
             {notifications.length > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-indigo-600 rounded-full"></span>
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-indigo-600 rounded-full pointer-events-none" />
             )}
-          </button>
+          </ThreeButton>
 
           <AnimatePresence>
             {showNotifications && (
@@ -497,12 +462,14 @@ function Header({ activeSpace, setActiveSpace, onOpenWFH, onOpenAddEmployee }) {
                 <div className="flex items-center justify-between border-b dark:border-slate-800 pb-2">
                   <span className="font-extrabold text-xs text-slate-700 dark:text-slate-300 uppercase tracking-wider">Latest Alerts</span>
                   {notifications.length > 0 && (
-                    <button
+                    <ThreeButton
+                      variant="ghost"
                       onClick={() => setNotifications([])}
-                      className="text-[10px] text-indigo-500 font-bold hover:underline"
+                      style={{ textTransform: 'none', letterSpacing: 'normal', fontSize: '10px', fontWeight: 700, padding: '2px 8px' }}
+                      className="!py-0.5 !px-2 !rounded-lg text-indigo-500"
                     >
                       Clear All
-                    </button>
+                    </ThreeButton>
                   )}
                 </div>
 
@@ -570,13 +537,16 @@ function AIChatBot() {
 
   return (
     <>
-      {/* Floating button */}
-      <button
+      {/* Floating AI button */}
+      <ThreeButton
+        variant="gradient"
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-28 right-4 md:bottom-6 md:right-6 z-40 p-3.5 md:p-4 rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-xl hover:opacity-90 active:scale-95 transition-transform"
+        className="fixed bottom-28 right-4 md:bottom-6 md:right-6 z-40 !rounded-full !px-0 !py-0"
+        style={{ width: 56, height: 56, textTransform: 'none' }}
+        aria-label="Open AI Assistant"
       >
         <Sparkles className="w-6 h-6 animate-pulse" />
-      </button>
+      </ThreeButton>
 
       {/* Drawer */}
       <AnimatePresence>
@@ -593,9 +563,14 @@ function AIChatBot() {
                 <Bot className="w-4 h-4" />
                 ZInterns AI Guide
               </span>
-              <button onClick={() => setIsOpen(false)} className="font-bold">
+              <ThreeButton
+                variant="ghost"
+                onClick={() => setIsOpen(false)}
+                className="!p-1 !rounded-lg text-white !bg-white/10 hover:!bg-white/20"
+                style={{ textTransform: 'none', fontSize: '14px', fontWeight: 700, minWidth: 28, minHeight: 28 }}
+              >
                 ✕
-              </button>
+              </ThreeButton>
             </div>
 
             {/* Conversation list */}
@@ -636,12 +611,14 @@ function AIChatBot() {
                 placeholder="Ask about geofence, leaves, rules..."
                 className="flex-1 p-2.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-transparent text-xs outline-none"
               />
-              <button
+              <ThreeButton
                 type="submit"
-                className="px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-xs"
+                variant="primary"
+                className="!px-4 !py-2.5 !rounded-xl"
+                style={{ textTransform: 'none', letterSpacing: 'normal', fontSize: '12px', fontWeight: 700 }}
               >
                 Send
-              </button>
+              </ThreeButton>
             </form>
           </motion.div>
         )}
@@ -771,22 +748,26 @@ function ForcePasswordChangeScreen() {
               />
             </div>
 
-            <button
+            <ThreeButton
               type="submit"
+              variant="gradient"
               disabled={loading}
-              className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-extrabold rounded-2xl shadow-xl transition-all uppercase tracking-wider text-xs"
+              className="w-full !py-4 !rounded-2xl"
+              style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '12px', fontWeight: 800 }}
             >
               {loading ? 'Updating Password...' : 'Save New Password & Open Dashboard'}
-            </button>
+            </ThreeButton>
 
             <div className="text-center pt-2">
-              <button
+              <ThreeButton
                 type="button"
+                variant="ghost"
                 onClick={logout}
-                className="text-[11px] font-bold text-slate-400 hover:text-rose-500 underline transition-colors"
+                style={{ textTransform: 'none', letterSpacing: 'normal', fontSize: '11px', fontWeight: 700 }}
+                className="text-slate-400 hover:text-rose-500 underline"
               >
-                Sign out & cancel
-              </button>
+                Sign out &amp; cancel
+              </ThreeButton>
             </div>
           </form>
         )}
@@ -930,10 +911,12 @@ function LoginPage() {
                 />
               </div>
 
-              <button
+              <ThreeButton
                 type="submit"
+                variant="gradient"
                 disabled={loadingLogin}
-                className="w-full py-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:opacity-95 text-white font-extrabold rounded-2xl shadow-xl transition-all uppercase tracking-wider text-xs flex items-center justify-center gap-2"
+                className="w-full !py-4 !rounded-2xl"
+                style={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '12px', fontWeight: 800 }}
               >
                 {loadingLogin ? (
                   <span className="flex items-center gap-2">
@@ -943,7 +926,7 @@ function LoginPage() {
                 ) : (
                   'Sign In To Desk'
                 )}
-              </button>
+              </ThreeButton>
 
               {errorMsg && (
                 <div className="p-3 bg-rose-950/60 border border-rose-500/40 text-rose-300 rounded-xl font-bold text-center text-xs animate-pulse">
