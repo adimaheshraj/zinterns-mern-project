@@ -161,9 +161,18 @@ export default function AddEmployeeModal({ isOpen, onClose, onUserCreated }) {
               <h3 className="text-xl font-black text-slate-800 dark:text-slate-100">
                 Employee Account Created Successfully!
               </h3>
-              <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-2">
-                ✉️ {createdData.message || `Credentials dispatched to ${createdData.user.email}`}
+              <p className={`text-sm font-bold mt-2 ${createdData.emailSent
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : 'text-amber-700 dark:text-amber-400'}`}>
+                {createdData.emailSent
+                  ? `✉️ Email accepted for delivery to ${createdData.user.email}.`
+                  : `⚠️ Account created, but the credentials email was not sent to ${createdData.user.email}.`}
               </p>
+              {!createdData.emailSent && (
+                <p className="text-xs text-amber-700 dark:text-amber-400 mt-2">
+                  {createdData.emailError || 'Check the backend mailer logs and SMTP settings.'} You can copy the credentials below and share them securely.
+                </p>
+              )}
             </div>
 
             <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-left space-y-3 font-mono text-xs relative">
@@ -181,8 +190,10 @@ export default function AddEmployeeModal({ isOpen, onClose, onUserCreated }) {
               <div>Registered Email: <span className="font-bold text-slate-800 dark:text-slate-200">{createdData.user.email}</span></div>
               <div>Username: <span className="font-bold text-slate-800 dark:text-slate-200">{createdData.temporaryCredentials.username}</span></div>
               <div>Temp Password: <span className="font-bold text-indigo-600 dark:text-indigo-400">{createdData.temporaryCredentials.password}</span></div>
-              <div className="text-[10px] text-amber-600 dark:text-amber-400 italic">
-                * Real-time credentials email dispatched to <strong>{createdData.user.email}</strong>. Password change enforced on first login.
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 italic">
+                {createdData.emailSent
+                  ? '* The mail server accepted the credentials email; delivery to the inbox can take time. Password change is enforced on first login.'
+                  : '* Password change is enforced on first login.'}
               </div>
             </div>
 

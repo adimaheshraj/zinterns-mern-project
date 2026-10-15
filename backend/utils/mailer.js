@@ -40,6 +40,11 @@ async function getTransporter() {
  */
 async function sendWelcomeEmail({ email, name, employeeId, username, tempPassword, role, department, appUrl }) {
   try {
+    if (!email || !String(email).trim()) {
+      throw new Error('A recipient email address is required.');
+    }
+
+    const recipient = String(email).trim();
     const transporter = await getTransporter();
     const portalUrl = appUrl || process.env.PUBLIC_APP_URL || 'http://40.192.120.59/';
 
@@ -91,7 +96,7 @@ async function sendWelcomeEmail({ email, name, employeeId, username, tempPasswor
     const senderEmail = process.env.SMTP_USER || 'noreply@zinterns.com';
     const mailOptions = {
       from: process.env.SMTP_FROM || `"ZInterns HR Team" <${senderEmail}>`,
-      to: email,
+      to: recipient,
       subject: `Welcome to ZInterns - Your Account Credentials (${employeeId})`,
       html: htmlContent,
       text: [
@@ -113,27 +118,38 @@ async function sendWelcomeEmail({ email, name, employeeId, username, tempPasswor
     };
 
     const info = await transporter.sendMail(mailOptions);
+    const accepted = info.accepted || [];
+    const rejected = info.rejected || [];
+    const recipientAccepted = accepted.some(
+      (address) => String(address).toLowerCase() === recipient.toLowerCase()
+    );
 
-    console.log('✉️ SMTP delivery accepted by server.');
-    console.log(`   recipient=${email}`);
+    if (!recipientAccepted || rejected.some(
+      (address) => String(address).toLowerCase() === recipient.toLowerCase()
+    )) {
+      throw new Error(`SMTP server did not accept the recipient ${recipient}.`);
+    }
+
+    console.log('✉️ SMTP server accepted the message for delivery.');
+    console.log(`   recipient=${recipient}`);
     console.log(`   messageId=${info.messageId || 'not provided'}`);
     console.log(`   envelope=${JSON.stringify(info.envelope || {})}`);
-    console.log(`   accepted=${JSON.stringify(info.accepted || [])}`);
-    console.log(`   rejected=${JSON.stringify(info.rejected || [])}`);
+    console.log(`   accepted=${JSON.stringify(accepted)}`);
+    console.log(`   rejected=${JSON.stringify(rejected)}`);
     console.log(`   response=${info.response || 'not provided'}`);
 
     return {
       success: true,
       messageId: info.messageId,
-      accepted: info.accepted || [],
-      rejected: info.rejected || [],
+      accepted,
+      rejected,
       response: info.response || ''
     };
   } catch (error) {
-    console.error(`❌ SMTP delivery failed for ${email}: ${error.message}`);
+    console.error(`❌ SMTP delivery failed for ${email || 'unknown recipient'}: ${error.message}`);
     console.error(`   code=${error.code || 'unknown'} responseCode=${error.responseCode || 'unknown'}`);
     console.error(`   response=${error.response || 'not provided'}`);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, code: error.code || 'UNKNOWN' };
   }
 }
 

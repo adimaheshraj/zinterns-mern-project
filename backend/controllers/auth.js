@@ -162,11 +162,18 @@ async function registerUser(req, res) {
       appUrl
     });
 
+    const emailError = !emailResult.success
+      ? emailResult.code === 'EAUTH'
+        ? 'Gmail rejected the SMTP login. Use the full Gmail address for SMTP_USER and a Google App Password (without spaces), not the regular account password, for SMTP_PASS.'
+        : 'Email delivery failed. Check the backend mailer logs and SMTP settings.'
+      : undefined;
+
     res.status(201).json({
       message: emailResult.success
-        ? `Account created successfully! Credentials sent to ${newUser.email}`
-        : 'Account created successfully (Email delivery attempted)',
+        ? `Account created successfully. The SMTP server accepted the credentials email for ${newUser.email}.`
+        : `Account created successfully, but the credentials email could not be sent to ${newUser.email}. ${emailError}`,
       emailSent: emailResult.success,
+      emailError,
       user: {
         _id: newUser._id,
         employeeId: newUser.employeeId,
