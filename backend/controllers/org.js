@@ -1,5 +1,6 @@
 const { User, Department, Team, Performance, Attendance, DailyReport, Task, Leave, FileModel, AuditLog, AssignmentHistory } = require('../models');
 const { notifyTeam, notifyUsers, teamRoom } = require('../utils/notifications');
+const { findUserByIdentifier } = require('../utils/userLookup');
 
 // Get Unified Dashboard Statistics (For Charts and KPIs)
 async function getOrgStats(req, res) {
@@ -540,19 +541,14 @@ async function updateAssignments(req, res) {
       return res.status(400).json({ error: 'User ID or Employee ID is required' });
     }
 
-    let targetUser = await User.findById(userId);
-    if (!targetUser) {
-      targetUser = await User.findOne({ employeeId: userId });
-    }
+    const targetUser = await findUserByIdentifier(User, userId);
     if (!targetUser) {
       return res.status(404).json({ error: 'User not found' });
     }
 
     let assignedMentor;
     if (mentor && mentor !== targetUser.mentor) {
-      assignedMentor = await User.findOne({
-        $or: [{ employeeId: mentor }, { _id: mentor }]
-      });
+      assignedMentor = await findUserByIdentifier(User, mentor);
       if (!assignedMentor || assignedMentor.role !== 'Mentor' || assignedMentor.status === 'disabled') {
         return res.status(400).json({ error: 'Choose an active mentor before assigning an intern.' });
       }

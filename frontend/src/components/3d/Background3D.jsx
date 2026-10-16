@@ -23,43 +23,45 @@ export default function Background3D() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     container.appendChild(renderer.domElement);
 
-    // Geometry & Particles
-    const particleCount = 180;
+    // ── Particles ─────────────────────────────────────────
+    const particleCount = 320;
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(particleCount * 3);
     const colors = new Float32Array(particleCount * 3);
-    const scales = new Float32Array(particleCount);
 
-    const color1 = new THREE.Color(0x6366f1); // Indigo
-    const color2 = new THREE.Color(0xa855f7); // Purple
-    const color3 = new THREE.Color(0xec4899); // Pink
+    const palette = [
+      new THREE.Color(0x6366f1), // Indigo
+      new THREE.Color(0xa855f7), // Purple
+      new THREE.Color(0xec4899), // Pink
+      new THREE.Color(0x06b6d4), // Cyan
+      new THREE.Color(0x10b981), // Emerald
+      new THREE.Color(0xf59e0b), // Amber
+      new THREE.Color(0x3b82f6), // Blue
+    ];
 
     for (let i = 0; i < particleCount; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * 80;
-      positions[i * 3 + 1] = (Math.random() - 0.5) * 80;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 50;
+      positions[i * 3] = (Math.random() - 0.5) * 90;
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 90;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 60;
 
-      const mixRatio = Math.random();
-      const mixedColor = mixRatio < 0.5 ? color1.clone().lerp(color2, mixRatio * 2) : color2.clone().lerp(color3, (mixRatio - 0.5) * 2);
-
-      colors[i * 3] = mixedColor.r;
-      colors[i * 3 + 1] = mixedColor.g;
-      colors[i * 3 + 2] = mixedColor.b;
-
-      scales[i] = Math.random() * 2 + 1;
+      const c = palette[Math.floor(Math.random() * palette.length)];
+      colors[i * 3] = c.r;
+      colors[i * 3 + 1] = c.g;
+      colors[i * 3 + 2] = c.b;
     }
 
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
-    // Particle Texture / Material
+    // Soft glow particle texture
     const canvas = document.createElement('canvas');
     canvas.width = 64;
     canvas.height = 64;
     const ctx = canvas.getContext('2d');
     const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
     gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-    gradient.addColorStop(0.3, 'rgba(255, 255, 255, 0.7)');
+    gradient.addColorStop(0.2, 'rgba(255, 255, 255, 0.85)');
+    gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.4)');
     gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
     ctx.fillStyle = gradient;
     ctx.beginPath();
@@ -69,11 +71,11 @@ export default function Background3D() {
     const texture = new THREE.CanvasTexture(canvas);
 
     const material = new THREE.PointsMaterial({
-      size: 1.2,
+      size: 1.8,
       vertexColors: true,
       map: texture,
       transparent: true,
-      opacity: 0.65,
+      opacity: 0.85,
       blending: THREE.AdditiveBlending,
       depthWrite: false
     });
@@ -81,30 +83,75 @@ export default function Background3D() {
     const particles = new THREE.Points(geometry, material);
     scene.add(particles);
 
-    // Floating Mesh Nodes (Torus & Icosahedron Wireframes)
-    const torusGeo = new THREE.TorusGeometry(8, 2, 16, 50);
+    // ── Wireframe Meshes ──────────────────────────────────
+    const meshes = [];
+
+    // Torus – indigo
+    const torusGeo = new THREE.TorusGeometry(8, 2.2, 16, 50);
     const torusMat = new THREE.MeshBasicMaterial({
-      color: 0x6366f1,
+      color: 0x818cf8,
       wireframe: true,
       transparent: true,
-      opacity: 0.12
+      opacity: 0.18
     });
     const torusMesh = new THREE.Mesh(torusGeo, torusMat);
-    torusMesh.position.set(-20, 10, -10);
+    torusMesh.position.set(-22, 12, -10);
     scene.add(torusMesh);
+    meshes.push({ mesh: torusMesh, geo: torusGeo, mat: torusMat });
 
+    // Icosahedron – purple
     const icoGeo = new THREE.IcosahedronGeometry(10, 1);
     const icoMat = new THREE.MeshBasicMaterial({
-      color: 0xa855f7,
+      color: 0xc084fc,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.18
+    });
+    const icoMesh = new THREE.Mesh(icoGeo, icoMat);
+    icoMesh.position.set(24, -14, -15);
+    scene.add(icoMesh);
+    meshes.push({ mesh: icoMesh, geo: icoGeo, mat: icoMat });
+
+    // Dodecahedron – cyan
+    const dodecGeo = new THREE.DodecahedronGeometry(6, 0);
+    const dodecMat = new THREE.MeshBasicMaterial({
+      color: 0x22d3ee,
       wireframe: true,
       transparent: true,
       opacity: 0.15
     });
-    const icoMesh = new THREE.Mesh(icoGeo, icoMat);
-    icoMesh.position.set(22, -12, -15);
-    scene.add(icoMesh);
+    const dodecMesh = new THREE.Mesh(dodecGeo, dodecMat);
+    dodecMesh.position.set(18, 18, -20);
+    scene.add(dodecMesh);
+    meshes.push({ mesh: dodecMesh, geo: dodecGeo, mat: dodecMat });
 
-    // Mouse interactive movement
+    // Octahedron – pink
+    const octGeo = new THREE.OctahedronGeometry(5, 0);
+    const octMat = new THREE.MeshBasicMaterial({
+      color: 0xf472b6,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.14
+    });
+    const octMesh = new THREE.Mesh(octGeo, octMat);
+    octMesh.position.set(-18, -16, -12);
+    scene.add(octMesh);
+    meshes.push({ mesh: octMesh, geo: octGeo, mat: octMat });
+
+    // Small TorusKnot – emerald
+    const tkGeo = new THREE.TorusKnotGeometry(3, 0.8, 64, 8);
+    const tkMat = new THREE.MeshBasicMaterial({
+      color: 0x34d399,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.12
+    });
+    const tkMesh = new THREE.Mesh(tkGeo, tkMat);
+    tkMesh.position.set(-8, -20, -18);
+    scene.add(tkMesh);
+    meshes.push({ mesh: tkMesh, geo: tkGeo, mat: tkMat });
+
+    // ── Mouse follow ─────────────────────────────────────
     let mouseX = 0;
     let mouseY = 0;
     let targetX = 0;
@@ -117,7 +164,7 @@ export default function Background3D() {
 
     window.addEventListener('mousemove', handleMouseMove);
 
-    // Resize handler
+    // ── Resize ────────────────────────────────────────────
     const handleResize = () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
@@ -126,7 +173,7 @@ export default function Background3D() {
 
     window.addEventListener('resize', handleResize);
 
-    // Animation Loop
+    // ── Animation Loop ───────────────────────────────────
     let animationFrameId;
     const timer = new THREE.Timer();
     let lastRenderTime = 0;
@@ -142,20 +189,32 @@ export default function Background3D() {
       lastRenderTime = currentTime - (delta % frameInterval);
 
       timer.update(currentTime);
-      const elapsedTime = timer.getElapsed();
+      const t = timer.getElapsed();
 
       // Smooth mouse follow
       targetX += (mouseX - targetX) * 0.05;
       targetY += (mouseY - targetY) * 0.05;
 
-      particles.rotation.y = elapsedTime * 0.03 + targetX * 0.5;
-      particles.rotation.x = elapsedTime * 0.02 + targetY * 0.5;
+      particles.rotation.y = t * 0.03 + targetX * 0.5;
+      particles.rotation.x = t * 0.02 + targetY * 0.5;
 
-      torusMesh.rotation.x = elapsedTime * 0.1;
-      torusMesh.rotation.y = elapsedTime * 0.15;
+      // Animate meshes with varied speeds
+      torusMesh.rotation.x = t * 0.1;
+      torusMesh.rotation.y = t * 0.15;
 
-      icoMesh.rotation.x = -elapsedTime * 0.12;
-      icoMesh.rotation.z = elapsedTime * 0.08;
+      icoMesh.rotation.x = -t * 0.12;
+      icoMesh.rotation.z = t * 0.08;
+
+      dodecMesh.rotation.y = t * 0.09;
+      dodecMesh.rotation.z = -t * 0.06;
+      dodecMesh.position.y = 18 + Math.sin(t * 0.4) * 3;
+
+      octMesh.rotation.x = t * 0.14;
+      octMesh.rotation.y = -t * 0.1;
+      octMesh.position.x = -18 + Math.cos(t * 0.3) * 2;
+
+      tkMesh.rotation.x = t * 0.2;
+      tkMesh.rotation.y = t * 0.15;
 
       renderer.render(scene, camera);
     };
@@ -172,10 +231,10 @@ export default function Background3D() {
       geometry.dispose();
       material.dispose();
       texture.dispose();
-      torusGeo.dispose();
-      torusMat.dispose();
-      icoGeo.dispose();
-      icoMat.dispose();
+      meshes.forEach(({ geo, mat }) => {
+        geo.dispose();
+        mat.dispose();
+      });
       renderer.dispose();
     };
   }, []);
@@ -183,7 +242,7 @@ export default function Background3D() {
   return (
     <div
       ref={mountRef}
-      className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-80 dark:opacity-90"
+      className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-90 dark:opacity-100"
     />
   );
 }

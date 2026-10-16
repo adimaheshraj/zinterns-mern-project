@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const { User, Settings, AuditLog } = require('../models');
 const { sendWelcomeEmail, sendPasswordResetEmail } = require('../utils/mailer');
 const { notifyTeam, notifyUsers } = require('../utils/notifications');
+const { findUserByIdentifier } = require('../utils/userLookup');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretjwtkey_zinterns_2026';
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'supersecretrefreshjwtkey_zinterns_2026';
@@ -104,9 +105,7 @@ async function registerUser(req, res) {
 
     let assignedMentor;
     if (normalizedRole === 'Intern' && mentor) {
-      assignedMentor = await User.findOne({
-        $or: [{ employeeId: mentor }, { _id: mentor }]
-      });
+      assignedMentor = await findUserByIdentifier(User, mentor);
       if (!assignedMentor || assignedMentor.role !== 'Mentor' || assignedMentor.status === 'disabled') {
         return res.status(400).json({ error: 'Choose an active mentor before assigning an intern.' });
       }
