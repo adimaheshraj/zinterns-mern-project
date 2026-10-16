@@ -1,4 +1,5 @@
 const { Task, User } = require('../models');
+const { notifyUsers } = require('../utils/notifications');
 
 // Get Tasks
 async function getTasks(req, res) {
@@ -79,7 +80,22 @@ async function createTask(req, res) {
       comments: []
     });
 
-    res.status(201).json(task);
+    const notification = await notifyUsers(req, [assignee], {
+      title: 'New task assigned',
+      message: `${req.user.name || 'Your manager'} assigned "${task.title}" to you.`,
+      subject: `New ZInterns task: ${task.title}`,
+      type: 'task',
+      event: 'task_assigned',
+      details: [
+        { label: 'Task', value: task.title },
+        { label: 'Project', value: task.project },
+        { label: 'Assigned by', value: req.user.name || employeeId },
+        { label: 'Deadline', value: new Date(task.deadline).toLocaleDateString() },
+        { label: 'Priority', value: task.priority }
+      ]
+    });
+
+    res.status(201).json({ ...task, ...notification });
   } catch (error) {
     res.status(500).json({ error: error.message || 'Server error' });
   }

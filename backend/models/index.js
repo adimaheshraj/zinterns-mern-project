@@ -108,7 +108,9 @@ const UserSchema = new Schema({
   durationMonths: { type: Number, default: 6 },
   gender: { type: String, enum: ['male', 'female', 'other'], default: 'male' },
   avatar: { type: String },
-  mustChangePassword: { type: Boolean, default: false }
+  mustChangePassword: { type: Boolean, default: false },
+  passwordResetToken: { type: String },
+  passwordResetExpires: { type: Date }
 }, { timestamps: true });
 
 // 2. Department Schema
@@ -231,6 +233,7 @@ const FileSchema = new Schema({
   type: { type: String, required: true },
   uploadedBy: { type: String, required: true },
   url: { type: String, required: true },
+  storageName: { type: String },
   version: { type: Number, default: 1 },
   history: [{ version: { type: Number }, url: { type: String }, updatedAt: { type: Date, default: Date.now } }]
 }, { timestamps: true });

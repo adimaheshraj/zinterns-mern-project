@@ -1,7 +1,9 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { User, Settings, AuditLog } = require('../models');
-const { sendWelcomeEmail } = require('../utils/mailer');
+const { sendWelcomeEmail, sendPasswordResetEmail } = require('../utils/mailer');
+const { notifyTeam, notifyUsers } = require('../utils/notifications');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretjwtkey_zinterns_2026';
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'supersecretrefreshjwtkey_zinterns_2026';
@@ -100,6 +102,16 @@ async function registerUser(req, res) {
     if (role === 'MENTOR') normalizedRole = 'Mentor';
     if (role === 'INTERN') normalizedRole = 'Intern';
 
+    let assignedMentor;
+    if (normalizedRole === 'Intern' && mentor) {
+      assignedMentor = await User.findOne({
+        $or: [{ employeeId: mentor }, { _id: mentor }]
+      });
+      if (!assignedMentor || assignedMentor.role !== 'Mentor' || assignedMentor.status === 'disabled') {
+        return res.status(400).json({ error: 'Choose an active mentor before assigning an intern.' });
+      }
+    }
+
     const cleanName = name.toLowerCase().replace(/[^a-z0-9]/g, '');
     const username = `${cleanName}${Math.floor(100 + Math.random() * 900)}`;
 
@@ -162,6 +174,47 @@ async function registerUser(req, res) {
       appUrl
     });
 
+    const teamNotification = await notifyTeam(req, User, newUser.team, {
+      title: 'A new teammate has joined',
+      subject: `Welcome ${newUser.name} to ${newUser.team}`,
+      message: `${newUser.name} has joined the ${newUser.team} team as ${newUser.designation || newUser.role}.`,
+      type: 'team',
+      details: [
+        { label: 'Name', value: newUser.name },
+        { label: 'Role', value: newUser.role },
+        { label: 'Department', value: newUser.department },
+        { label: 'Team', value: newUser.team },
+        { label: 'Employee ID', value: newUser.employeeId }
+      ]
+    }, [newUser.employeeId]);
+
+    let mentorNotification;
+    if (newUser.role === 'Intern' && assignedMentor) {
+      try {
+        mentorNotification = await notifyUsers(req, [assignedMentor, newUser], {
+          title: 'New intern assigned',
+          message: `${newUser.name} has been assigned to ${assignedMentor.name} as their mentor.`,
+          subject: `New intern assigned to you: ${newUser.name}`,
+          type: 'team',
+          event: 'intern_assigned',
+          details: [
+            { label: 'Intern', value: newUser.name },
+            { label: 'Employee ID', value: newUser.employeeId },
+            { label: 'Department', value: newUser.department },
+            { label: 'Team', value: newUser.team },
+            { label: 'Mentor', value: assignedMentor.name }
+          ]
+        });
+      } catch (notificationError) {
+        console.error(`Intern mentor notification failed for ${newUser.employeeId}: ${notificationError.message}`);
+        mentorNotification = {
+          notificationSent: false,
+          emailSent: false,
+          emailError: 'The intern was created, but the mentor notification could not be prepared.'
+        };
+      }
+    }
+
     const emailError = !emailResult.success
       ? emailResult.code === 'EAUTH'
         ? 'Gmail rejected the SMTP login. Use the full Gmail address for SMTP_USER and a Google App Password (without spaces), not the regular account password, for SMTP_PASS.'
@@ -174,6 +227,10 @@ async function registerUser(req, res) {
         : `Account created successfully, but the credentials email could not be sent to ${newUser.email}. ${emailError}`,
       emailSent: emailResult.success,
       emailError,
+      notifications: {
+        team: teamNotification,
+        mentor: mentorNotification || null
+      },
       user: {
         _id: newUser._id,
         employeeId: newUser.employeeId,
@@ -311,7 +368,8 @@ async function loginUser(req, res) {
       username: user.username,
       name: user.name,
       role: user.role,
-      department: user.department
+      department: user.department,
+      team: user.team
     };
 
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1d' });
@@ -325,6 +383,92 @@ async function loginUser(req, res) {
     });
   } catch (error) {
     res.status(500).json({ error: error.message || 'Server error during login' });
+  }
+}
+
+async function requestPasswordReset(req, res) {
+  try {
+    const email = typeof req.body.email === 'string' ? req.body.email.trim() : '';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: 'Enter a valid email address.' });
+    }
+
+    const escapedEmail = email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const user = await User.findOne({
+      email: { $regex: `^${escapedEmail}$`, $options: 'i' }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'No account was found with that email address.' });
+    }
+
+    if (user.status === 'disabled') {
+      return res.status(403).json({ error: 'This account is inactive. Please contact your administrator.' });
+    }
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+
+    await User.updateOne(
+      { _id: user._id },
+      { $set: { passwordResetToken: hashedToken, passwordResetExpires: expiresAt } }
+    );
+
+    const portalUrl = new URL(process.env.PUBLIC_APP_URL || 'http://40.192.120.59/');
+    portalUrl.searchParams.set('resetToken', resetToken);
+    const emailResult = await sendPasswordResetEmail({ email: user.email, resetUrl: portalUrl.toString() });
+
+    if (!emailResult.success) {
+      await User.updateOne(
+        { _id: user._id, passwordResetToken: hashedToken },
+        { $set: { passwordResetToken: null, passwordResetExpires: null } }
+      );
+      return res.status(502).json({ error: 'We could not send the reset email. Please try again later.' });
+    }
+
+    return res.json({ message: 'Password reset link sent. Check your email.' });
+  } catch (error) {
+    console.error('Password reset request failed:', error);
+    return res.status(500).json({ error: 'Unable to process the password reset request.' });
+  }
+}
+
+async function resetPassword(req, res) {
+  try {
+    const { token, newPassword } = req.body;
+    if (typeof token !== 'string' || !token || typeof newPassword !== 'string' || newPassword.length < 8) {
+      return res.status(400).json({ error: 'A valid reset link and a password of at least 8 characters are required.' });
+    }
+
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+    const user = await User.findOne({ passwordResetToken: hashedToken });
+    const expiresAt = user?.passwordResetExpires ? new Date(user.passwordResetExpires).getTime() : NaN;
+    if (!user || !Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+      return res.status(400).json({ error: 'This password reset link is invalid or has expired. Request a new one.' });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    const updateResult = await User.updateOne(
+      { _id: user._id, passwordResetToken: hashedToken },
+      {
+        $set: {
+          passwordHash,
+          mustChangePassword: false,
+          passwordResetToken: null,
+          passwordResetExpires: null
+        }
+      }
+    );
+
+    if (updateResult.modifiedCount !== 1) {
+      return res.status(400).json({ error: 'This password reset link has already been used. Request a new one.' });
+    }
+
+    return res.json({ message: 'Your password has been reset. You can now sign in.' });
+  } catch (error) {
+    console.error('Password reset failed:', error);
+    return res.status(500).json({ error: 'Unable to reset the password.' });
   }
 }
 
@@ -468,6 +612,8 @@ async function updateSettings(req, res) {
 module.exports = {
   registerUser,
   loginUser,
+  requestPasswordReset,
+  resetPassword,
   changePassword,
   updateProfile,
   getMe,

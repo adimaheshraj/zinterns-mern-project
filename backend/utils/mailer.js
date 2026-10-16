@@ -110,7 +110,7 @@ async function sendWelcomeEmail({ email, name, employeeId, username, tempPasswor
             When you log in with these temporary credentials for the first time, you will be automatically prompted to <strong>Change Your Password</strong> before accessing your workspace dashboard.
           </div>
 
-          <p style="color: #64748b; font-size: 13px; margin-bottom: 0;">
+      il      <p style="color: #64748b; font-size: 13px; margin-bottom: 0;">
             If you have any questions, please contact your HR Administrator.
           </p>
         </div>
@@ -200,6 +200,124 @@ async function sendWelcomeEmail({ email, name, employeeId, username, tempPasswor
   }
 }
 
+async function sendPasswordResetEmail({ email, resetUrl }) {
+  try {
+    if (!email || !String(email).trim()) {
+      throw new Error('A recipient email address is required.');
+    }
+
+    const recipient = String(email).trim();
+    const transporter = await getTransporter();
+    const info = await transporter.sendMail({
+      from: process.env.SMTP_FROM || `"ZInterns Support" <${process.env.SMTP_USER || 'noreply@zinterns.com'}>`,
+      to: recipient,
+      subject: 'Reset your ZInterns password',
+      text: [
+        'We received a request to reset your ZInterns password.',
+        `Use this one-time link within 30 minutes: ${resetUrl}`,
+        '',
+        'If you did not request this change, you can ignore this email.'
+      ].join('\n'),
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 28px; color: #1e293b;">
+          <h2 style="margin-top: 0;">Reset your password</h2>
+          <p>We received a request to reset your ZInterns password. This link expires in 30 minutes and can only be used once.</p>
+          <p style="margin: 28px 0;">
+            <a href="${resetUrl}" style="background: #4f46e5; color: #fff; padding: 12px 20px; border-radius: 8px; text-decoration: none; font-weight: 700;">Choose a new password</a>
+          </p>
+          <p style="font-size: 13px; color: #64748b;">If you did not request this change, you can ignore this email.</p>
+        </div>
+      `
+    });
+
+    const accepted = info.accepted || [];
+    const rejected = info.rejected || [];
+    const recipientAccepted = accepted.some(
+      (address) => String(address).toLowerCase() === recipient.toLowerCase()
+    );
+
+    if (!recipientAccepted || rejected.some(
+      (address) => String(address).toLowerCase() === recipient.toLowerCase()
+    )) {
+      throw new Error(`SMTP server did not accept the recipient ${recipient}.`);
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error(`Password reset email delivery failed: ${error.message}`);
+    cachedTransporter = null;
+    return { success: false, error: error.message, code: error.code || 'UNKNOWN' };
+  }
+}
+
+async function sendNotificationEmail({ recipients, subject, message, details = [] }) {
+  try {
+    const recipientList = [...new Set((recipients || []).map((email) => String(email || '').trim()).filter(Boolean))];
+    if (recipientList.length === 0) {
+      return { success: false, error: 'No notification email recipients were found.' };
+    }
+
+    const transporter = await getTransporter();
+    const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    })[character]);
+    const detailRows = details
+      .filter((detail) => detail?.label && detail?.value)
+      .map((detail) => `<tr><td style="padding:8px 12px;color:#64748b;">${escapeHtml(detail.label)}</td><td style="padding:8px 12px;font-weight:600;color:#1e293b;">${escapeHtml(detail.value)}</td></tr>`)
+      .join('');
+    const senderEmail = process.env.SMTP_USER || 'noreply@zinterns.com';
+    const info = await transporter.sendMail({
+      from: process.env.SMTP_FROM || `"ZInterns Team" <${senderEmail}>`,
+      to: 'undisclosed-recipients:;',
+      bcc: recipientList,
+      subject,
+      text: [message, ...details.map((detail) => `${detail.label}: ${detail.value}`)].join('\n'),
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:28px;background:#f8fafc;color:#1e293b;">
+          <div style="overflow:hidden;border-radius:18px;background:#fff;border:1px solid #e2e8f0;">
+            <div style="padding:24px 28px;background:linear-gradient(120deg,#4f46e5,#7c3aed);color:#fff;">
+              <p style="margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">ZInterns team update</p>
+              <h1 style="margin:0;font-size:22px;">${escapeHtml(subject)}</h1>
+            </div>
+            <div style="padding:24px 28px;">
+              <p style="margin:0 0 18px;line-height:1.6;">${escapeHtml(message)}</p>
+              ${detailRows ? `<table style="width:100%;border-collapse:collapse;background:#f8fafc;border-radius:12px;">${detailRows}</table>` : ''}
+              <p style="margin:22px 0 0;font-size:12px;color:#94a3b8;">This is an automated notification from your ZInterns workspace.</p>
+            </div>
+          </div>
+        </div>
+      `
+    });
+    const normalizeAddress = (email) => String(typeof email === 'string' ? email : email?.address || '').toLowerCase();
+    const accepted = (info.accepted || []).map(normalizeAddress);
+    const rejected = (info.rejected || []).map(normalizeAddress);
+    const acceptedCount = recipientList.filter((email) =>
+      accepted.includes(email.toLowerCase()) && !rejected.includes(email.toLowerCase())
+    ).length;
+
+    if (acceptedCount !== recipientList.length) {
+      return {
+        success: false,
+        acceptedCount,
+        recipientCount: recipientList.length,
+        error: `The SMTP server accepted ${acceptedCount} of ${recipientList.length} notification recipients.`
+      };
+    }
+
+    return { success: true, acceptedCount, recipientCount: recipientList.length };
+  } catch (error) {
+    console.error(`Notification email delivery failed: ${error.message}`);
+    cachedTransporter = null;
+    return { success: false, error: error.message, code: error.code || 'UNKNOWN' };
+  }
+}
+
 module.exports = {
-  sendWelcomeEmail
+  sendWelcomeEmail,
+  sendPasswordResetEmail,
+  sendNotificationEmail
 };

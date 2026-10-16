@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
+import './OrgTree.css';
 import {
   Users,
   Search,
@@ -18,7 +19,7 @@ import {
 import { useApp } from '../../context/AppContext';
 
 export default function OrgTree({ onSelectUser }) {
-  const { token, API_URL } = useApp();
+  const { token, API_URL, socket } = useApp();
   const [treeData, setTreeData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -32,7 +33,7 @@ export default function OrgTree({ onSelectUser }) {
 
   const containerRef = useRef(null);
 
-  const fetchTree = async () => {
+  const fetchTree = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`${API_URL}/org/tree`, {
@@ -61,11 +62,18 @@ export default function OrgTree({ onSelectUser }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [API_URL, token]);
 
   useEffect(() => {
     fetchTree();
-  }, [token, API_URL]);
+  }, [fetchTree]);
+
+  useEffect(() => {
+    if (!socket) return undefined;
+    const refreshTree = () => fetchTree();
+    socket.on('organization_updated', refreshTree);
+    return () => socket.off('organization_updated', refreshTree);
+  }, [socket, fetchTree]);
 
   const toggleNode = (nodeId) => {
     setExpandedNodes(prev => ({ ...prev, [nodeId]: !prev[nodeId] }));
@@ -190,9 +198,9 @@ export default function OrgTree({ onSelectUser }) {
       </div>
 
       {/* Visual Tree View Container */}
-      <div className="overflow-auto p-8 rounded-3xl bg-slate-900/90 text-slate-100 border border-slate-800 shadow-2xl min-h-[550px] flex flex-col items-center">
+      <div className="org-tree-scroll p-8 rounded-3xl bg-slate-900/90 text-slate-100 border border-slate-800 shadow-2xl min-h-[550px]">
         <div
-          className="transition-transform duration-200 flex flex-col items-center space-y-12"
+          className="org-tree-content transition-transform duration-200 flex flex-col items-center gap-12"
           style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top center' }}
         >
           {/* LEVEL 1: HR / ADMIN ROOTS */}
@@ -200,7 +208,7 @@ export default function OrgTree({ onSelectUser }) {
             <span className="text-[10px] font-extrabold uppercase tracking-widest px-3 py-1 bg-purple-500/20 text-purple-300 border border-purple-500/40 rounded-full mb-4">
               HR / Executive Control
             </span>
-            <div className="flex gap-6 flex-wrap justify-center">
+            <div className="org-tree-row gap-6">
               {sortByName(hrRoots).map(hr => (
                 <TreeNodeCard
                   key={hr._id}
@@ -214,7 +222,7 @@ export default function OrgTree({ onSelectUser }) {
             {hrReports.length > 0 && (
               <>
                 <div className="w-0.5 h-6 bg-purple-500/50"></div>
-                <div className="flex gap-6 flex-wrap justify-center">
+                <div className="org-tree-row gap-6">
                   {sortByName(hrReports).map(hr => (
                     <TreeNodeCard
                       key={hr._id}
@@ -238,74 +246,75 @@ export default function OrgTree({ onSelectUser }) {
               Reporting Managers
             </span>
 
-            <div className="flex flex-wrap gap-12 justify-center items-start w-full">
-              {filteredManagers.map(rm => {
-                const isRMExpanded = expandedNodes[rm.employeeId] !== false;
-                const mentors = sortByName(rm.mentors);
+            <div className="org-tree-manager-level" style={{ '--tree-line-color': 'rgba(99, 102, 241, 0.5)' }}>
+              <div className="org-tree-row org-tree-manager-row">
+                {filteredManagers.map(rm => {
+                  const isRMExpanded = expandedNodes[rm.employeeId] !== false;
+                  const mentors = sortByName(rm.mentors);
 
-                return (
-                  <div key={rm._id} className="flex flex-col items-center space-y-6 bg-slate-950/60 p-6 rounded-3xl border border-slate-800/80 shadow-xl">
-                    <TreeNodeCard
-                      user={rm}
-                      levelColor="indigo"
-                      badgeText="Reporting Manager"
-                      reportsCount={rm.directReportsCount}
-                      isExpanded={isRMExpanded}
-                      onToggle={() => toggleNode(rm.employeeId)}
-                      onSelectUser={onSelectUser}
-                    />
+                  return (
+                    <div key={rm._id} className="org-tree-manager-branch flex flex-col items-center gap-6 bg-slate-950/60 p-6 rounded-3xl border border-slate-800/80 shadow-xl">
+                      <TreeNodeCard
+                        user={rm}
+                        levelColor="indigo"
+                        badgeText="Reporting Manager"
+                        reportsCount={rm.directReportsCount}
+                        isExpanded={isRMExpanded}
+                        onToggle={() => toggleNode(rm.employeeId)}
+                        onSelectUser={onSelectUser}
+                      />
 
-                    {/* Mentors Branch */}
-                    {isRMExpanded && mentors.length > 0 && (
-                      <div className="flex flex-col items-center space-y-6 pt-2">
-                        <div className="w-0.5 h-6 bg-emerald-500/50"></div>
-                        <div className="flex gap-8 flex-wrap justify-center">
-                          {mentors.map(m => {
-                            const isMentorExpanded = expandedNodes[m.employeeId] !== false;
-                            const interns = sortByName(m.interns);
+                      {/* Mentors Branch */}
+                      {isRMExpanded && mentors.length > 0 && (
+                        <div className="org-tree-branch-group" style={{ '--tree-line-color': 'rgba(16, 185, 129, 0.5)' }}>
+                          <div className="org-tree-branch-row gap-8">
+                            {mentors.map(m => {
+                              const isMentorExpanded = expandedNodes[m.employeeId] !== false;
+                              const interns = sortByName(m.interns);
 
-                            return (
-                              <div key={m._id} className="flex flex-col items-center space-y-4">
-                                <TreeNodeCard
-                                  user={m}
-                                  levelColor="emerald"
-                                  badgeText="Mentor"
-                                  reportsCount={interns.length}
-                                  isExpanded={isMentorExpanded}
-                                  onToggle={() => toggleNode(m.employeeId)}
-                                  onSelectUser={onSelectUser}
-                                />
+                              return (
+                                <div key={m._id} className="org-tree-branch-child flex flex-col items-center gap-4">
+                                  <TreeNodeCard
+                                    user={m}
+                                    levelColor="emerald"
+                                    badgeText="Mentor"
+                                    reportsCount={interns.length}
+                                    isExpanded={isMentorExpanded}
+                                    onToggle={() => toggleNode(m.employeeId)}
+                                    onSelectUser={onSelectUser}
+                                  />
 
-                                {/* Interns Branch */}
-                                {isMentorExpanded && interns.length > 0 && (
-                                  <div className="flex flex-col items-center space-y-3">
-                                    <div className="w-0.5 h-4 bg-pink-500/50"></div>
-                                    <div className="flex gap-4 flex-wrap justify-center">
-                                      {interns.map(intern => (
-                                        <TreeNodeCard
-                                          key={intern._id}
-                                          user={intern}
-                                          levelColor="pink"
-                                          badgeText="Intern"
-                                          onSelectUser={onSelectUser}
-                                        />
-                                      ))}
+                                  {/* Interns Branch */}
+                                  {isMentorExpanded && interns.length > 0 && (
+                                    <div className="org-tree-branch-group" style={{ '--tree-line-color': 'rgba(236, 72, 153, 0.5)' }}>
+                                      <div className="org-tree-branch-row gap-4">
+                                        {interns.map(intern => (
+                                          <div key={intern._id} className="org-tree-branch-child">
+                                            <TreeNodeCard
+                                              user={intern}
+                                              levelColor="pink"
+                                              badgeText="Intern"
+                                              onSelectUser={onSelectUser}
+                                            />
+                                          </div>
+                                        ))}
+                                      </div>
                                     </div>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                      )}
+                    </div>
+                  );
+                })}
             </div>
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 }

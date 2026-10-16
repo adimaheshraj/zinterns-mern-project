@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { RefreshCw, Users, Shield, ArrowRight, History, Check, AlertCircle } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export default function AssignmentManagement({ onAssignmentUpdated }) {
-  const { token, API_URL } = useApp();
+  const { token, API_URL, socket } = useApp();
 
   const [employees, setEmployees] = useState([]);
   const [selectedUser, setSelectedUser] = useState('');
@@ -22,11 +22,7 @@ export default function AssignmentManagement({ onAssignmentUpdated }) {
   const [saving, setSaving] = useState(false);
   const [statusMsg, setStatusMsg] = useState(null);
 
-  useEffect(() => {
-    fetchDirectory();
-  }, [token, API_URL]);
-
-  const fetchDirectory = async () => {
+  const fetchDirectory = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`${API_URL}/org/directory`, {
@@ -41,7 +37,18 @@ export default function AssignmentManagement({ onAssignmentUpdated }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [API_URL, token]);
+
+  useEffect(() => {
+    fetchDirectory();
+  }, [fetchDirectory]);
+
+  useEffect(() => {
+    if (!socket) return undefined;
+    const refreshDirectory = () => fetchDirectory();
+    socket.on('organization_updated', refreshDirectory);
+    return () => socket.off('organization_updated', refreshDirectory);
+  }, [socket, fetchDirectory]);
 
   const handleSelectUser = async (empId) => {
     setSelectedUser(empId);
@@ -97,7 +104,13 @@ export default function AssignmentManagement({ onAssignmentUpdated }) {
 
       const data = await res.json();
       if (res.ok) {
-        setStatusMsg('🟢 Hierarchy & Team Assignments Updated Successfully!');
+        const notifications = data.notifications || [];
+        const emailFailures = notifications.filter((notification) => !notification.emailSent);
+        setStatusMsg(!notifications.length
+          ? 'Assignments updated successfully. No team or mentor notification was needed.'
+          : emailFailures.length
+            ? `Assignments updated. In-app updates sent; email could not be delivered: ${emailFailures.map((notification) => notification.emailError).filter(Boolean).join('; ') || 'check SMTP settings.'}`
+            : 'Assignments updated. Team and mentor notifications were emailed successfully.');
         fetchDirectory();
         if (onAssignmentUpdated) onAssignmentUpdated();
         // Refresh history

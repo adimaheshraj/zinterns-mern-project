@@ -29,7 +29,7 @@ export function AppProvider({ children }) {
 
   // Connect socket when user/token changes
   useEffect(() => {
-    const connectionKey = token && user ? `${token}:${user.employeeId}:${user.department}` : null;
+    const connectionKey = token && user ? `${token}:${user.employeeId}:${user.department}:${user.team}` : null;
     const connection = socketRef.current;
 
     if (connection.cleanupTimer) {
@@ -55,29 +55,39 @@ export function AppProvider({ children }) {
       connection.socket.disconnect();
     }
 
-    const newSocket = io(SOCKET_URL);
+    const newSocket = io(SOCKET_URL, { auth: { token } });
     connection.socket = newSocket;
     connection.key = connectionKey;
     setSocket(newSocket);
 
     newSocket.on('connect', () => {
       console.log('🔌 Connected to Socket.IO notification channel');
-      newSocket.emit('join_user', user.employeeId);
-      newSocket.emit('join_dept', user.department);
     });
 
     newSocket.on('new_notification', (data) => {
-      // Add notification to list
+      const notification = {
+        ...data,
+        id: data.id || Math.random().toString(),
+        type: data.type || 'info',
+        timestamp: data.timestamp ? new Date(data.timestamp) : new Date()
+      };
       setNotifications((prev) => [
-        {
-          id: Math.random().toString(),
-          title: data.title,
-          message: data.message,
-          type: data.type || 'info',
-          timestamp: new Date()
-        },
-        ...prev
-      ]);
+        notification,
+        ...prev.filter((item) => item.id !== notification.id)
+      ].slice(0, 50));
+      window.dispatchEvent(new CustomEvent('zinterns:notification', { detail: notification }));
+    });
+
+    newSocket.on('profile_updated', async () => {
+      try {
+        const response = await fetch(`${API_URL}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (response.ok) setUser(data.user);
+      } catch (error) {
+        console.error('Failed to refresh profile after organization update', error);
+      }
     });
 
     return () => {

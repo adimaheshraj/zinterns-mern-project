@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import {
   ResponsiveContainer,
@@ -42,7 +42,7 @@ import Stat3DSphere from '../components/3d/Stat3DSphere';
 const COLORS = ['#6366f1', '#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 export default function Dashboard() {
-  const { user, token, API_URL, setActiveTab } = useApp();
+  const { user, token, API_URL, setActiveTab, socket } = useApp();
   const [stats, setStats] = useState(null);
   const [recentReports, setRecentReports] = useState([]);
   const [directory, setDirectory] = useState([]);
@@ -52,7 +52,7 @@ export default function Dashboard() {
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       const headers = { Authorization: `Bearer ${token}` };
       const endpoints = [
@@ -78,11 +78,18 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [API_URL, token]);
 
   useEffect(() => {
     fetchDashboardData();
-  }, [token, API_URL]);
+  }, [fetchDashboardData]);
+
+  useEffect(() => {
+    if (!socket) return undefined;
+    const refreshDashboard = () => fetchDashboardData();
+    socket.on('organization_updated', refreshDashboard);
+    return () => socket.off('organization_updated', refreshDashboard);
+  }, [socket, fetchDashboardData]);
 
   if (loading) {
     return (

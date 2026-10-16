@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Send, Pin, MessageSquare, ThumbsUp, Heart, Flame, PartyPopper } from 'lucide-react';
 
 const EMOJIS = ['👍', '❤️', '🔥', '🎉'];
 
 export default function TeamSpace() {
-  const { user, token, API_URL } = useApp();
+  const { user, token, API_URL, socket } = useApp();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -20,7 +20,7 @@ export default function TeamSpace() {
   // Comment input state for each post
   const [commentInputs, setCommentInputs] = useState({});
 
-  const fetchPosts = async () => {
+  const fetchPosts = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/announcements`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -34,9 +34,9 @@ export default function TeamSpace() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [API_URL, token]);
 
-  const fetchDepartments = async () => {
+  const fetchDepartments = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/org/directory`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -49,12 +49,22 @@ export default function TeamSpace() {
     } catch (e) {
       console.error(e);
     }
-  };
+  }, [API_URL, token]);
 
   useEffect(() => {
     fetchPosts();
     fetchDepartments();
-  }, [token, API_URL]);
+  }, [fetchPosts, fetchDepartments]);
+
+  useEffect(() => {
+    if (!socket) return undefined;
+    const refreshTeamData = () => {
+      fetchDepartments();
+      fetchPosts();
+    };
+    socket.on('organization_updated', refreshTeamData);
+    return () => socket.off('organization_updated', refreshTeamData);
+  }, [socket, fetchDepartments, fetchPosts]);
 
   const handleCreatePost = async (e) => {
     e.preventDefault();

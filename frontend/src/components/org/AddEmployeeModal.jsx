@@ -184,6 +184,26 @@ export default function AddEmployeeModal({ isOpen, onClose, onUserCreated }) {
               )}
             </div>
 
+            {createdData.notifications && (
+              <div className="space-y-2 rounded-2xl border border-indigo-100 bg-indigo-50/70 p-4 text-left dark:border-indigo-900/60 dark:bg-indigo-950/30">
+                <p className="text-xs font-extrabold uppercase tracking-wide text-indigo-800 dark:text-indigo-200">
+                  Team notifications
+                </p>
+                <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+                  {createdData.notifications.team?.emailSent
+                    ? `Welcome email sent to ${createdData.notifications.team.emailRecipientCount} team member(s).`
+                    : `Team email was not delivered: ${createdData.notifications.team?.emailError || 'No team recipients were found.'}`}
+                </p>
+                {createdData.notifications.mentor && (
+                  <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+                    {createdData.notifications.mentor.emailSent
+                      ? 'The intern and mentor were notified by email.'
+                      : `Mentor email notification failed: ${createdData.notifications.mentor.emailError || 'Check SMTP settings.'}`}
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-left space-y-3 font-mono text-xs relative">
               <div className="flex items-center justify-between text-slate-400 uppercase tracking-wider text-[10px] font-bold">
                 <span>Temporary Account Credentials</span>

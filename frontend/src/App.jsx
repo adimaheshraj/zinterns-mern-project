@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useApp } from './context/AppContext';
 import { io } from 'socket.io-client';
 import {
@@ -341,6 +341,21 @@ function MobileNav({ activeTab, setActiveTab }) {
 function Header({ activeSpace, setActiveSpace, onOpenWFH, onOpenAddEmployee }) {
   const { user, token, API_URL, theme, toggleTheme, logout, notifications, setNotifications } = useApp();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [notificationToast, setNotificationToast] = useState(null);
+  const toastTimer = useRef(null);
+
+  useEffect(() => {
+    const handleRealtimeNotification = (event) => {
+      setNotificationToast(event.detail);
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+      toastTimer.current = setTimeout(() => setNotificationToast(null), 6500);
+    };
+    window.addEventListener('zinterns:notification', handleRealtimeNotification);
+    return () => {
+      window.removeEventListener('zinterns:notification', handleRealtimeNotification);
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+    };
+  }, []);
 
   useEffect(() => {
     async function fetchUpcomingEvents() {
@@ -452,15 +467,20 @@ function Header({ activeSpace, setActiveSpace, onOpenWFH, onOpenAddEmployee }) {
           >
             <Bell className="w-5 h-5" />
             {notifications.length > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-indigo-600 rounded-full pointer-events-none" />
+              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-white bg-indigo-600 px-1 text-[9px] font-black leading-none text-white pointer-events-none dark:border-slate-900">
+                {notifications.length > 9 ? '9+' : notifications.length}
+              </span>
             )}
           </ThreeButton>
 
           <AnimatePresence>
             {showNotifications && (
-              <div className="absolute right-0 mt-3 w-[calc(100vw-1.5rem)] max-w-80 sm:w-80 bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-4 space-y-3 max-h-96 overflow-y-auto">
-                <div className="flex items-center justify-between border-b dark:border-slate-800 pb-2">
-                  <span className="font-extrabold text-xs text-slate-700 dark:text-slate-300 uppercase tracking-wider">Latest Alerts</span>
+              <div className="absolute right-0 mt-3 w-[calc(100vw-1.5rem)] max-w-96 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950">
+                <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
+                  <div>
+                    <span className="block text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-200">Notifications</span>
+                    <span className="mt-0.5 block text-[10px] text-slate-400">Live team and account updates</span>
+                  </div>
                   {notifications.length > 0 && (
                     <ThreeButton
                       variant="ghost"
@@ -473,16 +493,32 @@ function Header({ activeSpace, setActiveSpace, onOpenWFH, onOpenAddEmployee }) {
                   )}
                 </div>
 
-                <div className="divide-y dark:divide-slate-900">
+                <div className="max-h-[min(70vh,26rem)] divide-y divide-slate-100 overflow-y-auto dark:divide-slate-800">
                   {notifications.length > 0 ? (
                     notifications.map((n) => (
-                      <div key={n.id} className="py-3 space-y-1 text-xs">
-                        <p className="font-bold text-slate-700 dark:text-slate-300">{n.title}</p>
-                        <p className="text-slate-400 leading-normal">{n.message}</p>
+                      <div key={n.id} className="flex gap-3 px-4 py-3.5">
+                        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-300">
+                          <Bell className="h-4 w-4" />
+                        </span>
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{n.title}</p>
+                            {n.timestamp && (
+                              <time className="shrink-0 text-[10px] text-slate-400" dateTime={new Date(n.timestamp).toISOString()}>
+                                {new Date(n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </time>
+                            )}
+                          </div>
+                          <p className="break-words text-xs leading-relaxed text-slate-500 dark:text-slate-400">{n.message}</p>
+                        </div>
                       </div>
                     ))
                   ) : (
-                    <p className="text-xs text-slate-400 text-center py-6">No recent updates.</p>
+                    <div className="px-5 py-10 text-center">
+                      <Bell className="mx-auto h-6 w-6 text-slate-300 dark:text-slate-600" />
+                      <p className="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-400">You’re all caught up</p>
+                      <p className="mt-1 text-[11px] text-slate-400">New team updates will appear here instantly.</p>
+                    </div>
                   )}
                 </div>
               </div>
@@ -490,6 +526,33 @@ function Header({ activeSpace, setActiveSpace, onOpenWFH, onOpenAddEmployee }) {
           </AnimatePresence>
         </div>
       </div>
+      <AnimatePresence>
+        {notificationToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -12, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.98 }}
+            className="fixed right-4 top-20 z-[100] flex w-[calc(100vw-2rem)] max-w-sm gap-3 rounded-2xl border border-indigo-100 bg-white/95 p-4 shadow-2xl shadow-indigo-950/15 backdrop-blur-xl dark:border-slate-700 dark:bg-slate-900/95"
+            role="status"
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700 dark:bg-indigo-900/70 dark:text-indigo-200">
+              <Bell className="h-5 w-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-extrabold text-slate-800 dark:text-slate-100">{notificationToast.title}</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-300">{notificationToast.message}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setNotificationToast(null)}
+              className="h-7 w-7 shrink-0 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              aria-label="Dismiss notification"
+            >
+              ×
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   );
 }
@@ -497,39 +560,83 @@ function Header({ activeSpace, setActiveSpace, onOpenWFH, onOpenAddEmployee }) {
 // ----------------------------------------------------
 // AI Chatbot Floating panel
 // ----------------------------------------------------
+function ChatMessageText({ text }) {
+  const renderInline = (line) => line.split(/(\*\*[^*]+\*\*)/g).map((part, index) => (
+    part.startsWith('**') && part.endsWith('**')
+      ? <strong key={index}>{part.slice(2, -2)}</strong>
+      : part
+  ));
+
+  return (
+    <div className="space-y-1 whitespace-pre-wrap break-words">
+      {text.split('\n').map((line, index) => {
+        const listItem = line.match(/^\s*(?:[-*]|\d+\.)\s+(.*)$/);
+        if (listItem) {
+          return (
+            <div key={index} className="flex items-start gap-1.5">
+              <span aria-hidden="true">•</span>
+              <span>{renderInline(listItem[1])}</span>
+            </div>
+          );
+        }
+        return <div key={index} className={line ? '' : 'h-2'}>{renderInline(line)}</div>;
+      })}
+    </div>
+  );
+}
+
 function AIChatBot() {
   const { token, API_URL } = useApp();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
-    { role: 'assistant', text: 'Hello! I am your ZInterns Enterprise AI Assistant. How can I help you with org structure, check-ins, tasks, or WFH passes?' }
+    { role: 'assistant', text: 'Hi! I’m your ZInterns Guide. Ask me how to use a workspace feature or get help with attendance, WFH, leave requests, tasks, reports, or your team.' }
   ]);
   const [chatInput, setChatInput] = useState('');
   const [typing, setTyping] = useState(false);
+  const conversationRef = useRef(null);
+
+  useEffect(() => {
+    conversationRef.current?.scrollTo({
+      top: conversationRef.current.scrollHeight,
+      behavior: 'smooth'
+    });
+  }, [messages, typing, isOpen]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!chatInput.trim()) return;
+    const userText = chatInput.trim();
+    if (!userText || typing) return;
 
-    const userText = chatInput;
     setMessages((prev) => [...prev, { role: 'user', text: userText }]);
     setChatInput('');
     setTyping(true);
 
     try {
+      const history = messages
+        .filter((item) => ['user', 'assistant'].includes(item.role))
+        .slice(-10)
+        .map((item) => ({ role: item.role, content: item.text }));
       const res = await fetch(`${API_URL}/ai/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ message: userText })
+        body: JSON.stringify({ message: userText, history })
       });
       const data = await res.json();
-      if (res.ok) {
-        setMessages((prev) => [...prev, { role: 'assistant', text: data.reply }]);
+      if (!res.ok) {
+        throw new Error(data.error || 'The guide could not respond. Please try again.');
       }
-    } catch (err) {
-      console.error(err);
+      if (typeof data.reply !== 'string' || !data.reply.trim()) {
+        throw new Error('The guide returned an empty response. Please try again.');
+      }
+      setMessages((prev) => [...prev, { role: 'assistant', text: data.reply }]);
+    } catch (error) {
+      setMessages((prev) => [
+        ...prev,
+        { role: 'error', text: error.message || 'Unable to reach the guide. Check your connection and try again.' }
+      ]);
     } finally {
       setTyping(false);
     }
@@ -555,26 +662,30 @@ function AIChatBot() {
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-28 left-3 right-3 z-50 w-auto max-h-[calc(100dvh-9rem)] bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col h-[400px] overflow-hidden md:left-auto md:right-6 md:bottom-24 md:w-80"
+            className="fixed bottom-28 left-3 right-3 z-50 w-auto h-[min(560px,calc(100dvh-9rem))] bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col overflow-hidden md:left-auto md:right-6 md:bottom-24 md:w-[400px]"
           >
             {/* Header */}
-            <div className="p-4 border-b border-slate-200/60 dark:border-slate-800/40 flex items-center justify-between bg-gradient-to-r from-indigo-500 to-indigo-600 text-white">
-              <span className="font-extrabold text-xs uppercase tracking-wider flex items-center gap-1.5">
-                <Bot className="w-4 h-4" />
-                ZInterns AI Guide
-              </span>
+            <div className="px-4 py-3 border-b border-slate-200/60 dark:border-slate-800/40 flex items-center justify-between bg-gradient-to-r from-indigo-500 to-indigo-600 text-white">
+              <div>
+                <span className="font-extrabold text-xs uppercase tracking-wider flex items-center gap-1.5">
+                  <Bot className="w-4 h-4" />
+                  ZInterns Guide
+                </span>
+                <span className="block text-[10px] text-indigo-100 mt-1 ml-5">Workspace help and answers</span>
+              </div>
               <ThreeButton
                 variant="ghost"
                 onClick={() => setIsOpen(false)}
                 className="!p-1 !rounded-lg text-white !bg-white/10 hover:!bg-white/20"
                 style={{ textTransform: 'none', fontSize: '14px', fontWeight: 700, minWidth: 28, minHeight: 28 }}
+                aria-label="Close AI guide"
               >
                 ✕
               </ThreeButton>
             </div>
 
             {/* Conversation list */}
-            <div className="flex-1 p-4 space-y-3 overflow-y-auto text-xs">
+            <div ref={conversationRef} aria-live="polite" className="flex-1 min-h-0 p-4 space-y-3 overflow-y-auto text-sm">
               {messages.map((m, idx) => (
                 <div
                   key={idx}
@@ -584,16 +695,19 @@ function AIChatBot() {
                     className={`p-3 rounded-2xl max-w-[85%] leading-relaxed ${
                       m.role === 'user'
                         ? 'bg-indigo-600 text-white'
-                        : 'bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-800/40'
+                        : m.role === 'error'
+                          ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900'
+                          : 'bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-800/40'
                     }`}
                   >
-                    {m.text}
+                    <ChatMessageText text={m.text} />
                   </div>
                 </div>
               ))}
               {typing && (
                 <div className="flex justify-start">
-                  <div className="p-3 bg-slate-100 dark:bg-slate-900 rounded-2xl flex gap-1">
+                  <div className="p-3 bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 rounded-2xl flex items-center gap-1.5 text-xs">
+                    <span className="mr-1">Thinking</span>
                     <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></span>
                     <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce delay-100"></span>
                     <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce delay-200"></span>
@@ -606,16 +720,21 @@ function AIChatBot() {
             <form onSubmit={handleSubmit} className="p-3 border-t border-slate-200/60 dark:border-slate-800/40 flex gap-2">
               <input
                 type="text"
+                aria-label="Ask the ZInterns Guide"
+                maxLength={2000}
+                disabled={typing}
+                required
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
-                placeholder="Ask about geofence, leaves, rules..."
-                className="flex-1 p-2.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-transparent text-xs outline-none"
+                placeholder="Ask a question..."
+                className="min-w-0 flex-1 p-2.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-transparent text-sm outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-60"
               />
               <ThreeButton
                 type="submit"
                 variant="primary"
+                disabled={typing || !chatInput.trim()}
                 className="!px-4 !py-2.5 !rounded-xl"
-                style={{ textTransform: 'none', letterSpacing: 'normal', fontSize: '12px', fontWeight: 700 }}
+                style={{ textTransform: 'none', letterSpacing: 'normal', fontSize: '12px', fontWeight: 700, flexShrink: 0 }}
               >
                 Send
               </ThreeButton>
@@ -785,6 +904,14 @@ function LoginPage() {
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState(null);
   const [loadingLogin, setLoadingLogin] = useState(false);
+  const [resetToken, setResetToken] = useState(() => new URLSearchParams(window.location.search).get('resetToken') || '');
+  const [forgotPassword, setForgotPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [resetFeedback, setResetFeedback] = useState(null);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [loginNotice, setLoginNotice] = useState('');
   const [telemetry, setTelemetry] = useState({ allocatedUsers: 0, departmentCount: 0, radiusMeters: 0, socketStatus: 'Connecting' });
 
   useEffect(() => {
@@ -813,6 +940,7 @@ function LoginPage() {
     e.preventDefault();
     if (!username || !password) return;
     setErrorMsg(null);
+    setLoginNotice('');
     setLoadingLogin(true);
 
     try {
@@ -824,14 +952,89 @@ function LoginPage() {
     }
   };
 
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    setResetFeedback(null);
+    setResetLoading(true);
+
+    try {
+      const response = await fetch(`${API_URL}/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resetEmail })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Unable to send a password reset link.');
+      }
+      setResetFeedback({ type: 'success', text: data.message });
+    } catch (error) {
+      setResetFeedback({ type: 'error', text: error.message || 'Unable to send a password reset link.' });
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    setResetFeedback(null);
+    if (newPassword.length < 8) {
+      setResetFeedback({ type: 'error', text: 'Your password must be at least 8 characters long.' });
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setResetFeedback({ type: 'error', text: 'The passwords do not match.' });
+      return;
+    }
+
+    setResetLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: resetToken, newPassword })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Unable to reset the password.');
+      }
+
+      const currentUrl = new URL(window.location.href);
+      currentUrl.searchParams.delete('resetToken');
+      window.history.replaceState({}, '', currentUrl);
+      setResetToken('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      setForgotPassword(false);
+      setLoginNotice(data.message);
+    } catch (error) {
+      setResetFeedback({ type: 'error', text: error.message || 'Unable to reset the password.' });
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const returnToSignIn = () => {
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.delete('resetToken');
+    window.history.replaceState({}, '', currentUrl);
+    setResetToken('');
+    setResetFeedback(null);
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-950 p-4 sm:p-6 relative overflow-hidden font-sans">
+    <div
+      className="min-h-screen flex items-center justify-center bg-slate-950 p-4 sm:p-6 relative overflow-hidden font-sans"
+      style={{
+        backgroundImage: 'radial-gradient(ellipse at 15% 20%, rgba(79, 70, 229, 0.24), transparent 38%), radial-gradient(ellipse at 85% 80%, rgba(168, 85, 247, 0.2), transparent 36%), linear-gradient(135deg, #080b1c, #111827 55%, #090b18)'
+      }}
+    >
       <Background3D />
 
-      <div className="w-full max-w-5xl bg-slate-900/80 backdrop-blur-2xl border border-slate-800 rounded-3xl shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 z-10 my-6">
+      <div className="w-full max-w-5xl bg-slate-900/55 backdrop-blur-xl border border-white/15 rounded-3xl shadow-2xl shadow-indigo-950/40 overflow-hidden grid grid-cols-1 lg:grid-cols-12 z-10 my-6">
         
         {/* Left Side - Enterprise Workspace Preview & Quick Logins */}
-        <div className="lg:col-span-7 p-8 sm:p-10 bg-gradient-to-br from-indigo-950/90 via-slate-900/90 to-purple-950/90 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-800/80 space-y-8">
+        <div className="lg:col-span-7 p-8 sm:p-10 bg-gradient-to-br from-indigo-950/65 via-slate-900/55 to-purple-950/65 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-white/10 space-y-8">
           <div>
             {/* Header branding */}
             <div className="flex items-center gap-3">
@@ -840,14 +1043,14 @@ function LoginPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-black text-white tracking-tight leading-none">ZInterns</h1>
-                <span className="text-[10px] text-indigo-400 font-extrabold uppercase tracking-widest mt-1 block">
-                  Enterprise Management Platform 2.0
+                <span className="text-[10px] text-indigo-300 font-extrabold uppercase tracking-widest mt-1 block">
+                  Team workspace
                 </span>
               </div>
             </div>
 
-            <p className="text-xs text-slate-300 font-medium leading-relaxed mt-6 max-w-lg">
-              Next-generation organization platform featuring interactive 3D Org Hierarchy trees, backend geofenced attendance validation, WFH pass approvals, and real-time email credentials dispatch.
+            <p className="text-sm text-slate-200 font-medium leading-relaxed mt-6 max-w-lg">
+              Bring your team’s day together in one place. Track attendance, organize tasks, share updates, and manage time off with a clear view of what needs attention.
             </p>
 
             {/* Platform Metrics Telemetry Cards */}
@@ -875,13 +1078,111 @@ function LoginPage() {
         </div>
 
         {/* Right Side - Secure Sign In Desk */}
-        <div className="lg:col-span-5 p-8 sm:p-10 flex flex-col justify-between space-y-6 bg-slate-900/60">
+        <div className="lg:col-span-5 p-8 sm:p-10 flex flex-col justify-between space-y-6 bg-slate-950/20">
           <div className="space-y-6">
             <div className="text-center sm:text-left space-y-1">
-              <h2 className="text-2xl font-black text-white tracking-tight">Portal Sign In</h2>
-              <p className="text-xs text-slate-400 font-medium">Enter your credentials to access your dashboard desk.</p>
+              <h2 className="text-2xl font-black text-white tracking-tight">
+                {resetToken ? 'Choose a new password' : forgotPassword ? 'Forgot your password?' : 'Welcome back'}
+              </h2>
+              <p className="text-xs text-slate-300 font-medium">
+                {resetToken
+                  ? 'Set a new password for your account.'
+                  : forgotPassword
+                    ? 'Enter the email address registered to your account.'
+                    : 'Sign in to continue to your team workspace.'}
+              </p>
             </div>
 
+            {resetToken ? (
+              <form onSubmit={handleResetPassword} className="space-y-4 text-xs">
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-400 uppercase tracking-wider block text-[10px]">New password</label>
+                  <input
+                    type="password"
+                    required
+                    minLength={8}
+                    autoComplete="new-password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="At least 8 characters"
+                    className="w-full p-3.5 border border-slate-800 rounded-xl bg-slate-950 text-white outline-none focus:ring-2 focus:ring-indigo-500 font-medium transition-all"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-400 uppercase tracking-wider block text-[10px]">Confirm new password</label>
+                  <input
+                    type="password"
+                    required
+                    minLength={8}
+                    autoComplete="new-password"
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    placeholder="Re-enter your new password"
+                    className="w-full p-3.5 border border-slate-800 rounded-xl bg-slate-950 text-white outline-none focus:ring-2 focus:ring-indigo-500 font-medium transition-all"
+                  />
+                </div>
+                <ThreeButton
+                  type="submit"
+                  variant="gradient"
+                  disabled={resetLoading}
+                  className="w-full !py-4 !rounded-2xl"
+                  style={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '12px', fontWeight: 800 }}
+                >
+                  {resetLoading ? 'Updating password...' : 'Set new password'}
+                </ThreeButton>
+                <button
+                  type="button"
+                  onClick={returnToSignIn}
+                  className="w-full text-center text-xs font-semibold text-indigo-300 hover:text-indigo-200"
+                >
+                  Back to sign in
+                </button>
+                {resetFeedback && (
+                  <div className={`p-3 rounded-xl font-bold text-center text-xs ${resetFeedback.type === 'error' ? 'bg-rose-950/60 border border-rose-500/40 text-rose-300' : 'bg-emerald-950/50 border border-emerald-500/40 text-emerald-300'}`}>
+                    {resetFeedback.text}
+                  </div>
+                )}
+              </form>
+            ) : forgotPassword ? (
+              <form onSubmit={handleForgotPassword} className="space-y-4 text-xs">
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-400 uppercase tracking-wider block text-[10px]">Account email</label>
+                  <input
+                    type="email"
+                    required
+                    autoComplete="email"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    placeholder="Enter your registered email address"
+                    className="w-full p-3.5 border border-slate-800 rounded-xl bg-slate-950 text-white outline-none focus:ring-2 focus:ring-indigo-500 font-medium transition-all"
+                  />
+                </div>
+                <ThreeButton
+                  type="submit"
+                  variant="gradient"
+                  disabled={resetLoading}
+                  className="w-full !py-4 !rounded-2xl"
+                  style={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '12px', fontWeight: 800 }}
+                >
+                  {resetLoading ? 'Sending reset link...' : 'Email password reset link'}
+                </ThreeButton>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForgotPassword(false);
+                    setResetFeedback(null);
+                  }}
+                  className="w-full text-center text-xs font-semibold text-indigo-300 hover:text-indigo-200"
+                >
+                  Back to sign in
+                </button>
+                {resetFeedback && (
+                  <div className={`p-3 rounded-xl font-bold text-center text-xs ${resetFeedback.type === 'error' ? 'bg-rose-950/60 border border-rose-500/40 text-rose-300' : 'bg-emerald-950/50 border border-emerald-500/40 text-emerald-300'}`}>
+                    {resetFeedback.text}
+                  </div>
+                )}
+              </form>
+            ) : (
             <form onSubmit={handleSubmit} className="space-y-4 text-xs">
               <div className="space-y-1.5">
                 <label className="font-bold text-slate-400 uppercase tracking-wider block text-[10px]">
@@ -909,6 +1210,18 @@ function LoginPage() {
                   placeholder="••••••••"
                   className="w-full p-3.5 border border-slate-800 rounded-xl bg-slate-950 text-white outline-none focus:ring-2 focus:ring-indigo-500 font-medium transition-all"
                 />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResetEmail(username.includes('@') ? username : '');
+                    setForgotPassword(true);
+                    setResetFeedback(null);
+                    setErrorMsg(null);
+                  }}
+                  className="block ml-auto text-[11px] font-semibold text-indigo-300 hover:text-indigo-200"
+                >
+                  Forgot password?
+                </button>
               </div>
 
               <ThreeButton
@@ -924,9 +1237,15 @@ function LoginPage() {
                     Authenticating...
                   </span>
                 ) : (
-                  'Sign In To Desk'
+                  'Sign in'
                 )}
               </ThreeButton>
+
+              {loginNotice && (
+                <div className="p-3 bg-emerald-950/50 border border-emerald-500/40 text-emerald-300 rounded-xl font-bold text-center text-xs">
+                  {loginNotice}
+                </div>
+              )}
 
               {errorMsg && (
                 <div className="p-3 bg-rose-950/60 border border-rose-500/40 text-rose-300 rounded-xl font-bold text-center text-xs animate-pulse">
@@ -934,14 +1253,15 @@ function LoginPage() {
                 </div>
               )}
             </form>
+            )}
           </div>
 
-          <div className="p-4 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 text-[11px] text-indigo-300 space-y-1">
+          <div className="p-4 rounded-2xl bg-indigo-950/35 border border-indigo-400/25 text-[11px] text-indigo-200 space-y-1">
             <div className="font-bold flex items-center gap-1">
-              <span>✉️</span> New Employee Account?
+              <span>✦</span> Need an account?
             </div>
-            <p className="text-indigo-300/80 leading-normal">
-              Your login credentials are delivered directly to your email. First-time login will prompt password customization.
+            <p className="text-indigo-100/75 leading-normal">
+              Contact your team administrator to get access to the workspace.
             </p>
           </div>
         </div>

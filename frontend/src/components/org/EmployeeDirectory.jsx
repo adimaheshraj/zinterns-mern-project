@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import {
   Users,
   Search,
@@ -19,7 +19,7 @@ import {
 import { useApp } from '../../context/AppContext';
 
 export default function EmployeeDirectory({ onOpenAddEmployee, onSelectEmployee }) {
-  const { user, token, API_URL } = useApp();
+  const { user, token, API_URL, socket } = useApp();
 
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -38,7 +38,7 @@ export default function EmployeeDirectory({ onOpenAddEmployee, onSelectEmployee 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const fetchDirectory = async () => {
+  const fetchDirectory = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`${API_URL}/org/directory`, {
@@ -53,11 +53,18 @@ export default function EmployeeDirectory({ onOpenAddEmployee, onSelectEmployee 
     } finally {
       setLoading(false);
     }
-  };
+  }, [API_URL, token]);
 
   useEffect(() => {
     fetchDirectory();
-  }, [token, API_URL]);
+  }, [fetchDirectory]);
+
+  useEffect(() => {
+    if (!socket) return undefined;
+    const refreshDirectory = () => fetchDirectory();
+    socket.on('organization_updated', refreshDirectory);
+    return () => socket.off('organization_updated', refreshDirectory);
+  }, [socket, fetchDirectory]);
 
   // Handle account status toggle (HR only)
   const handleToggleStatus = async (empId, currentStatus) => {

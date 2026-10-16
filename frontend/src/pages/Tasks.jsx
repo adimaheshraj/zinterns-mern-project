@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Plus, ListTodo, Calendar, MessageSquare, CheckSquare, PlusCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -12,10 +12,13 @@ const columns = [
 ];
 
 export default function Tasks() {
-  const { user, token, API_URL } = useApp();
+  const { user, token, API_URL, socket } = useApp();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState(null);
+  const [creatingTask, setCreatingTask] = useState(false);
+  const [createTaskError, setCreateTaskError] = useState('');
+  const [taskNotice, setTaskNotice] = useState('');
 
   const getInternNameByEmployeeId = (employeeId) => {
     const intern = interns.find((i) => String(i.employeeId) === String(employeeId));
@@ -36,7 +39,7 @@ export default function Tasks() {
   const [newChecklist, setNewChecklist] = useState(['']);
 
   // Fetch all tasks
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/tasks`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -50,10 +53,10 @@ export default function Tasks() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [API_URL, token]);
 
   // Fetch interns for assignee dropdown
-  const fetchInterns = async () => {
+  const fetchInterns = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/org/directory?role=Intern`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -65,12 +68,24 @@ export default function Tasks() {
     } catch (e) {
       console.error(e);
     }
-  };
+  }, [API_URL, token]);
 
   useEffect(() => {
     fetchTasks();
     fetchInterns();
-  }, [token, API_URL]);
+  }, [fetchTasks, fetchInterns]);
+
+  useEffect(() => {
+    if (!socket) return undefined;
+    const refreshTasks = () => fetchTasks();
+    const refreshInterns = () => fetchInterns();
+    socket.on('task_assigned', refreshTasks);
+    socket.on('organization_updated', refreshInterns);
+    return () => {
+      socket.off('task_assigned', refreshTasks);
+      socket.off('organization_updated', refreshInterns);
+    };
+  }, [socket, fetchTasks, fetchInterns]);
 
   // Update task status
   const moveTask = async (taskId, nextStatus) => {
@@ -97,12 +112,15 @@ export default function Tasks() {
   // Submit new task
   const handleCreateTask = async (e) => {
     e.preventDefault();
-    if (!newTitle || !newDeadline) return;
+    if (creatingTask) return;
+    setCreateTaskError('');
+    setTaskNotice('');
 
     const checklistObjs = newChecklist
       .filter(item => item.trim() !== '')
       .map(text => ({ text, done: false }));
 
+    setCreatingTask(true);
     try {
       const res = await fetch(`${API_URL}/tasks`, {
         method: 'POST',
@@ -120,17 +138,27 @@ export default function Tasks() {
           checklist: checklistObjs
         })
       });
-      if (res.ok) {
-        fetchTasks();
-        setShowCreateModal(false);
-        // Reset form
-        setNewTitle('');
-        setNewDesc('');
-        setNewDeadline('');
-        setNewChecklist(['']);
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(data?.error || 'Unable to assign this task. Please try again.');
       }
-    } catch (e) {
-      console.error(e);
+
+      await fetchTasks();
+      setShowCreateModal(false);
+      setTaskNotice(data?.emailSent
+        ? `Task "${data?.title || newTitle}" was assigned and an email notification was sent.`
+        : `Task "${data?.title || newTitle}" was assigned and the in-app notification was sent, but email delivery failed: ${data?.emailError || 'check the mail server settings.'}`);
+      setNewTitle('');
+      setNewDesc('');
+      setNewDeadline('');
+      setNewAssignTo('');
+      setNewProject('');
+      setNewPriority('medium');
+      setNewChecklist(['']);
+    } catch (error) {
+      setCreateTaskError(error.message || 'Unable to assign this task. Please try again.');
+    } finally {
+      setCreatingTask(false);
     }
   };
 
@@ -212,7 +240,11 @@ export default function Tasks() {
         </div>
         {user.role !== 'Intern' && user.role !== 'HR' && (
           <button
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => {
+              setCreateTaskError('');
+              setTaskNotice('');
+              setShowCreateModal(true);
+            }}
             className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 shadow transition-colors"
           >
             <Plus className="w-5 h-5" />
@@ -220,6 +252,11 @@ export default function Tasks() {
           </button>
         )}
       </div>
+      {taskNotice && (
+        <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-200">
+          {taskNotice}
+        </div>
+      )}
 
       {/* Kanban Board columns */}
       <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4 overflow-y-auto pb-6 min-h-[500px]">
@@ -307,7 +344,7 @@ export default function Tasks() {
       {/* Expanded Task modal */}
       <AnimatePresence>
         {selectedTask && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50">
             <motion.div
               layoutId={`task-${selectedTask._id}`}
               className="w-full max-w-2xl bg-white dark:bg-slate-950 rounded-2xl border shadow-xl flex flex-col max-h-[85vh] overflow-hidden"
@@ -427,7 +464,7 @@ export default function Tasks() {
       {/* Create Task Modal */}
       <AnimatePresence>
         {showCreateModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50">
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -439,15 +476,21 @@ export default function Tasks() {
                   <PlusCircle className="w-5 h-5 text-indigo-500" />
                   Assign Sprint Task
                 </h3>
-                <button onClick={() => setShowCreateModal(false)} className="text-slate-400 font-bold">✕</button>
+                <button type="button" onClick={() => setShowCreateModal(false)} className="text-slate-400 font-bold">✕</button>
               </div>
 
               <form onSubmit={handleCreateTask} className="space-y-4 text-sm">
+                {createTaskError && (
+                  <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:border-rose-900/70 dark:bg-rose-950/40 dark:text-rose-200">
+                    {createTaskError}
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-slate-400 uppercase">Project Name</label>
                     <input
                       type="text"
+                      required
                       value={newProject}
                       onChange={(e) => setNewProject(e.target.value)}
                       className="w-full p-2 border rounded-lg bg-transparent"
@@ -456,6 +499,7 @@ export default function Tasks() {
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-slate-400 uppercase">Assignee ID</label>
                     <select
+                      required
                       value={newAssignTo}
                       onChange={(e) => setNewAssignTo(e.target.value)}
                       className="w-full p-2 border rounded-lg bg-transparent"
@@ -545,9 +589,10 @@ export default function Tasks() {
 
                 <button
                   type="submit"
-                  className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-md hover:bg-indigo-700"
+                  disabled={creatingTask}
+                  className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-md hover:bg-indigo-700 disabled:cursor-wait disabled:opacity-70"
                 >
-                  Create and Broadcast Task
+                  {creatingTask ? 'Assigning task…' : 'Create and Broadcast Task'}
                 </button>
               </form>
             </motion.div>

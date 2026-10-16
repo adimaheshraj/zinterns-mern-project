@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 
 const { authenticateJWT, requireRoles } = require('../middlewares/auth');
 
@@ -18,6 +19,15 @@ const telemetryCtrl = require('../controllers/telemetry');
 
 // --- Auth Routes ---
 router.post('/auth/login', authCtrl.loginUser);
+const passwordResetLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: 'Too many password reset attempts. Please try again in 15 minutes.' }
+});
+router.post('/auth/forgot-password', passwordResetLimiter, authCtrl.requestPasswordReset);
+router.post('/auth/reset-password', passwordResetLimiter, authCtrl.resetPassword);
 router.get('/public/telemetry', telemetryCtrl.getPublicTelemetry);
 router.post('/auth/register', authenticateJWT, requireRoles(['HR', 'Super Admin']), authCtrl.registerUser);
 router.post('/auth/change-password', authenticateJWT, authCtrl.changePassword);
@@ -71,7 +81,14 @@ router.get('/org/assignments/history/:userId', authenticateJWT, orgCtrl.getAssig
 router.post('/ai/report-summary', authenticateJWT, aiCtrl.getReportSummary);
 router.get('/ai/attendance-insights/:internId', authenticateJWT, aiCtrl.getAttendanceInsights);
 router.get('/ai/performance-prediction/:internId', authenticateJWT, aiCtrl.getPerformancePrediction);
-router.post('/ai/chat', authenticateJWT, aiCtrl.handleChat);
+const aiChatLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  limit: 30,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: 'You have sent too many guide messages. Please try again in a few minutes.' }
+});
+router.post('/ai/chat', authenticateJWT, aiChatLimiter, aiCtrl.handleChat);
 
 // --- Announcements & Team Space Routes ---
 router.get('/announcements', authenticateJWT, announcementsCtrl.getAnnouncements);
@@ -81,7 +98,8 @@ router.post('/announcements/:id/comment', authenticateJWT, announcementsCtrl.add
 
 // --- Files Routes ---
 router.get('/files', authenticateJWT, filesCtrl.getFiles);
-router.post('/files/upload', authenticateJWT, filesCtrl.uploadFile);
+router.post('/files/upload', authenticateJWT, filesCtrl.uploadMiddleware, filesCtrl.uploadFile);
+router.get('/files/:storageName/download', authenticateJWT, filesCtrl.downloadFile);
 
 // --- Holidays Routes ---
 router.get('/holidays', authenticateJWT, holidaysCtrl.getHolidays);

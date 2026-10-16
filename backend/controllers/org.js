@@ -1,4 +1,5 @@
 const { User, Department, Team, Performance, Attendance, DailyReport, Task, Leave, FileModel, AuditLog, AssignmentHistory } = require('../models');
+const { notifyTeam, notifyUsers, teamRoom } = require('../utils/notifications');
 
 // Get Unified Dashboard Statistics (For Charts and KPIs)
 async function getOrgStats(req, res) {
@@ -547,6 +548,16 @@ async function updateAssignments(req, res) {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    let assignedMentor;
+    if (mentor && mentor !== targetUser.mentor) {
+      assignedMentor = await User.findOne({
+        $or: [{ employeeId: mentor }, { _id: mentor }]
+      });
+      if (!assignedMentor || assignedMentor.role !== 'Mentor' || assignedMentor.status === 'disabled') {
+        return res.status(400).json({ error: 'Choose an active mentor before assigning an intern.' });
+      }
+    }
+
     const updates = {};
     const changes = [];
 
@@ -603,9 +614,67 @@ async function updateAssignments(req, res) {
       });
     }
 
+    const io = req.app.get('io');
+    const teamChange = changes.find((change) => change.type === 'team');
+    if (teamChange && io) {
+      const oldRoom = teamRoom(teamChange.prev);
+      const newRoom = teamRoom(teamChange.next);
+      if (oldRoom) io.in(String(updatedUser.employeeId)).socketsLeave(oldRoom);
+      if (newRoom) io.in(String(updatedUser.employeeId)).socketsJoin(newRoom);
+      io.to(String(updatedUser.employeeId)).emit('profile_updated', {
+        team: updatedUser.team,
+        department: updatedUser.department
+      });
+    }
+
+    const notificationResults = [];
+    if (teamChange) {
+      notificationResults.push(await notifyTeam(req, User, updatedUser.team, {
+        title: 'A new teammate has joined',
+        subject: `Welcome ${updatedUser.name} to ${updatedUser.team}`,
+        message: `${updatedUser.name} has joined the ${updatedUser.team} team as ${updatedUser.designation || updatedUser.role}.`,
+        type: 'team',
+        details: [
+          { label: 'Name', value: updatedUser.name },
+          { label: 'Role', value: updatedUser.role },
+          { label: 'Department', value: updatedUser.department },
+          { label: 'Team', value: updatedUser.team },
+          { label: 'Employee ID', value: updatedUser.employeeId }
+        ]
+      }));
+    }
+
+    const mentorChange = changes.find((change) => change.type === 'mentor' && change.next);
+    if (mentorChange && updatedUser.role === 'Intern' && assignedMentor) {
+      try {
+        notificationResults.push(await notifyUsers(req, [updatedUser, assignedMentor], {
+          title: 'New intern assigned',
+          message: `${updatedUser.name} has been assigned to ${assignedMentor.name} as their mentor.`,
+          subject: `New intern assigned to you: ${updatedUser.name}`,
+          type: 'team',
+          event: 'intern_assigned',
+          details: [
+            { label: 'Intern', value: updatedUser.name },
+            { label: 'Employee ID', value: updatedUser.employeeId },
+            { label: 'Department', value: updatedUser.department },
+            { label: 'Team', value: updatedUser.team },
+            { label: 'Mentor', value: assignedMentor.name }
+          ]
+        }));
+      } catch (notificationError) {
+        console.error(`Intern mentor notification failed for ${updatedUser.employeeId}: ${notificationError.message}`);
+        notificationResults.push({
+          notificationSent: false,
+          emailSent: false,
+          emailError: 'The assignment was saved, but the mentor notification could not be prepared.'
+        });
+      }
+    }
+
     res.json({
       message: 'Employee assignments updated successfully',
-      user: updatedUser
+      user: updatedUser,
+      notifications: notificationResults
     });
   } catch (error) {
     res.status(500).json({ error: error.message || 'Server error' });
